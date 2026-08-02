@@ -16,28 +16,37 @@ function showScreen(name) {
 }
 
 // --------------------------------------------------------------------------
-// Áudio
+// Áudio (sintetizado via Web Audio API — sem arquivos externos)
 // --------------------------------------------------------------------------
-const audio = {
-  music: document.getElementById('audio-music'),
-  select: document.getElementById('audio-select'),
-  winRound: document.getElementById('audio-win-round'),
-  loseRound: document.getElementById('audio-lose-round'),
-  victory: document.getElementById('audio-victory'),
-  defeat: document.getElementById('audio-defeat'),
-};
+const SFX = SoundEngine.SFX;
+const BGM = SoundEngine.BGM;
 
-function safePlay(el) {
-  if (!el) return;
-  el.currentTime = 0;
-  el.play().catch(() => { /* arquivo ausente ou bloqueado, ignora */ });
+// --------------------------------------------------------------------------
+// Tela cheia + orientação paisagem (disparado no gesto do usuário)
+// --------------------------------------------------------------------------
+async function enterImmersiveMode() {
+  const el = document.documentElement;
+  try {
+    if (el.requestFullscreen) await el.requestFullscreen();
+    else if (el.webkitRequestFullscreen) await el.webkitRequestFullscreen();
+  } catch (e) { /* navegador bloqueou tela cheia, segue sem ela */ }
+
+  try {
+    if (screen.orientation && screen.orientation.lock) {
+      await screen.orientation.lock('landscape');
+    }
+  } catch (e) { /* navegador não suporta travar orientação (ex: iOS Safari) */ }
+
+  document.body.classList.add('started');
 }
 
 // --------------------------------------------------------------------------
 // TELA 1 -> INICIAR: dispara vídeo da produtora com som (gesto do usuário
-// libera o áudio no navegador)
+// libera o áudio no navegador), entra em tela cheia e trava paisagem
 // --------------------------------------------------------------------------
 document.getElementById('btn-start').addEventListener('click', () => {
+  SoundEngine.unlock();
+  enterImmersiveMode();
   goToVideo('produtora', screens.produtora, () => goToVideo('intro', screens.intro, goToSelect));
 });
 
@@ -76,47 +85,40 @@ function goToVideo(key, screenEl, onFinish) {
 
 function goToSelect() {
   showScreen('select');
-  safePlay(audio.music);
+  BGM.start();
 }
 
 // --------------------------------------------------------------------------
-// TELA 4: SELEÇÃO DE PERSONAGEM
+// TELA 4: SELEÇÃO DE PERSONAGEM (grid de cards já estilizados)
 // --------------------------------------------------------------------------
-const hotspotLayer = document.getElementById('hotspot-layer');
+const characterGrid = document.getElementById('character-grid');
 const selectedNameEl = document.getElementById('selected-name');
 const btnConfirm = document.getElementById('btn-confirm');
 let selectedCharacter = null;
 
 CHARACTERS.forEach(ch => {
-  const spot = document.createElement('div');
-  spot.className = 'hotspot';
-  spot.dataset.id = ch.id;
-  spot.style.setProperty('--spot-color', ch.color);
-  spot.style.left = ch.rect.left + '%';
-  spot.style.top = ch.rect.top + '%';
-  spot.style.width = ch.rect.width + '%';
-  spot.style.height = ch.rect.height + '%';
-
-  const label = document.createElement('span');
-  label.className = 'hotspot-label';
-  label.textContent = ch.name;
-  spot.appendChild(label);
-
-  spot.addEventListener('click', () => selectCharacter(ch, spot));
-  hotspotLayer.appendChild(spot);
+  const card = document.createElement('button');
+  card.className = 'char-card-img';
+  card.type = 'button';
+  card.dataset.id = ch.id;
+  card.style.setProperty('--card-color', ch.color);
+  card.innerHTML = `<img src="${charImg(ch.id)}" alt="${ch.name}">`;
+  card.addEventListener('click', () => selectCharacter(ch, card));
+  characterGrid.appendChild(card);
 });
 
-function selectCharacter(ch, spot) {
-  document.querySelectorAll('.hotspot').forEach(s => s.classList.remove('selected'));
-  spot.classList.add('selected');
+function selectCharacter(ch, card) {
+  document.querySelectorAll('.char-card-img').forEach(c => c.classList.remove('selected'));
+  card.classList.add('selected');
   selectedCharacter = ch;
   selectedNameEl.textContent = `Selecionado: ${ch.name}`;
   btnConfirm.disabled = false;
-  safePlay(audio.select);
+  SFX.select();
 }
 
 btnConfirm.addEventListener('click', () => {
   if (!selectedCharacter) return;
+  SFX.confirm();
   startGame(selectedCharacter);
 });
 
@@ -142,7 +144,46 @@ const overlayEnd = document.getElementById('overlay-end');
 const overlayTitle = document.getElementById('overlay-title');
 const overlaySubtitle = document.getElementById('overlay-subtitle');
 const btnRestart = document.getElementById('btn-restart');
-const btnBackMenu = document.getElementById('btn-back-menu');
+const victoryVideoEl = document.getElementById('victory-video');
+
+const specialOverlay = document.getElementById('special-overlay');
+const specialVideoEl = document.getElementById('special-video');
+
+// --------------------------------------------------------------------------
+// Toca um clipe de vídeo específico de personagem (especial ou vitória).
+// Se o arquivo ainda não existir, ou falhar por qualquer motivo, chama o
+// callback imediatamente — o jogo nunca trava esperando um vídeo ausente.
+// --------------------------------------------------------------------------
+function playClip(videoEl, overlayEl, src, maxDurationMs, callback) {
+  let done = false;
+  const finish = () => {
+    if (done) return;
+    done = true;
+    clearTimeout(safety);
+    if (overlayEl) overlayEl.classList.add('hidden');
+    videoEl.pause();
+    videoEl.onended = null;
+    videoEl.onerror = null;
+    if (callback) callback();
+  };
+  const finishWithError = () => {
+    if (!overlayEl) videoEl.style.display = 'none';
+    finish();
+  };
+
+  const safety = setTimeout(finish, maxDurationMs);
+
+  videoEl.src = src;
+  videoEl.currentTime = 0;
+  videoEl.muted = false;
+  if (overlayEl) overlayEl.classList.remove('hidden');
+  else videoEl.style.display = 'block';
+
+  const playPromise = videoEl.play();
+  if (playPromise) playPromise.catch(finishWithError);
+  videoEl.onended = finish;
+  videoEl.onerror = finishWithError;
+}
 
 const MAX_HP = 100;
 const MOVE_LABEL = { punch: 'Soco', kick: 'Chute', block: 'Bloqueio', special: 'Especial' };
@@ -181,9 +222,11 @@ function startGame(chosen) {
   updateBars();
   roundResult.textContent = 'Faça sua jogada!';
   overlayEnd.classList.add('hidden');
+  victoryVideoEl.style.display = 'none';
+  victoryVideoEl.removeAttribute('src');
 
   showScreen('game');
-  safePlay(audio.music);
+  BGM.start();
 }
 
 function updateBars() {
@@ -285,7 +328,23 @@ document.querySelectorAll('.choice-btn').forEach(btn => {
 
 function playTurn(playerMove) {
   locked = true;
+  SFX[playerMove]();
   const rivalMove = cpuChoice();
+
+  // Se alguém usou o Especial, toca o clipe daquele personagem antes de
+  // aplicar o resultado (se o arquivo ainda não existir, segue direto).
+  const specialUserId = playerMove === 'special' ? player.id : (rivalMove === 'special' ? rival.id : null);
+
+  if (specialUserId) {
+    playClip(specialVideoEl, specialOverlay, `./assets/videos/specials/${specialUserId}.mp4`, 2500, () => {
+      resolveAndApply(playerMove, rivalMove);
+    });
+  } else {
+    resolveAndApply(playerMove, rivalMove);
+  }
+}
+
+function resolveAndApply(playerMove, rivalMove) {
   const { pDmg, cDmg, pMeterGain, cMeterGain, text } = resolveTurn(playerMove, rivalMove);
 
   playerHP = clamp(playerHP - pDmg, 0, MAX_HP);
@@ -296,8 +355,8 @@ function playTurn(playerMove) {
   updateBars();
   roundResult.textContent = text;
 
-  if (pDmg > 0) { showDamage(playerDmgEl, pDmg); hit(playerPortrait); safePlay(audio.loseRound); }
-  if (cDmg > 0) { showDamage(rivalDmgEl, cDmg); hit(rivalPortrait); safePlay(audio.winRound); }
+  if (pDmg > 0) { showDamage(playerDmgEl, pDmg); hit(playerPortrait); SFX.hit(); }
+  if (cDmg > 0) { showDamage(rivalDmgEl, cDmg); hit(rivalPortrait); SFX.hit(); }
   if (pDmg > 0 || cDmg > 0) shakeScreen();
 
   setTimeout(() => {
@@ -351,30 +410,21 @@ function endGame(result) {
   }
 
   overlayEnd.classList.remove('hidden');
-  audio.music.pause();
-  audio.music.currentTime = 0;
-  safePlay(result === 'win' ? audio.victory : audio.defeat);
+  result === 'win' ? SFX.victory() : SFX.defeat();
 
-  if (result === 'win') launchConfetti();
+  if (result === 'win') {
+    launchConfetti();
+    playClip(victoryVideoEl, null, `./assets/videos/victory/${player.id}.mp4`, 8000, () => {});
+  }
 }
 
 btnRestart.addEventListener('click', () => {
   overlayEnd.classList.add('hidden');
   showScreen('select');
-  safePlay(audio.music);
-});
-
-btnBackMenu.addEventListener('click', () => {
-  overlayEnd.classList.add('hidden');
-  audio.music.pause();
-  audio.music.currentTime = 0;
-  showScreen('start');
 });
 
 btnMenu.addEventListener('click', () => {
-  audio.music.pause();
-  audio.music.currentTime = 0;
-  showScreen('start');
+  showScreen('select');
 });
 
 // --------------------------------------------------------------------------

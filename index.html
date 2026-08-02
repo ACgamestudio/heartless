@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Heart Less OwO Jokenpô</title>
 <link rel="stylesheet" href="./styles.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -19,7 +19,7 @@
     <h1 class="logo">HEART LESS <span class="owo">OwO</span></h1>
     <p class="subtitle">JOKENPÔ</p>
     <button id="btn-start" class="btn-glow">INICIAR</button>
-
+    <p class="hint">🔊 toque para iniciar com som e tela cheia</p>
   </div>
 </section>
 
@@ -53,10 +53,7 @@
     <div class="glow-blob glow-cyan"></div>
   </div>
   <h2 class="section-title">ESCOLHA SEU LUTADOR</h2>
-  <div class="poster-select-wrap">
-    <img src="./assets/img/poster.png" class="poster-select-img" alt="Elenco Heart Less OwO">
-    <div id="hotspot-layer" class="hotspot-layer"></div>
-  </div>
+  <div id="character-grid" class="character-grid"></div>
   <div class="select-bar">
     <div class="select-info">
       <span id="selected-name">Nenhum personagem selecionado</span>
@@ -119,42 +116,34 @@
     <button id="btn-special" class="choice-btn choice-special" data-choice="special" disabled>💥<span>Especial</span></button>
   </div>
 
-  <button id="btn-menu" class="btn-ghost">← Menu</button>
+  <button id="btn-menu" class="btn-ghost">← Trocar lutador</button>
 </section>
+
+<!-- ===================== OVERLAY: VÍDEO DE ESPECIAL ===================== -->
+<div id="special-overlay" class="video-overlay hidden">
+  <video id="special-video" playsinline></video>
+</div>
 
 <!-- ===================== OVERLAY: FIM DE JOGO ===================== -->
 <div id="overlay-end" class="overlay hidden">
   <canvas id="confetti-canvas"></canvas>
   <div class="overlay-content">
+    <video id="victory-video" playsinline></video>
     <h2 id="overlay-title">VITÓRIA</h2>
     <p id="overlay-subtitle"></p>
     <div class="overlay-buttons">
       <button id="btn-restart" class="btn-glow">JOGAR NOVAMENTE</button>
-      <button id="btn-back-menu" class="btn-ghost">MENU INICIAL</button>
     </div>
   </div>
 </div>
 
-<!-- ÁUDIOS (opcionais, adicione seus próprios arquivos em assets/audio/) -->
-<audio id="audio-music" loop hidden>
-  <source src="./assets/audio/music.mp3" type="audio/mpeg">
-</audio>
-<audio id="audio-select" hidden>
-  <source src="./assets/audio/select.mp3" type="audio/mpeg">
-</audio>
-<audio id="audio-win-round" hidden>
-  <source src="./assets/audio/win_round.mp3" type="audio/mpeg">
-</audio>
-<audio id="audio-lose-round" hidden>
-  <source src="./assets/audio/lose_round.mp3" type="audio/mpeg">
-</audio>
-<audio id="audio-victory" hidden>
-  <source src="./assets/audio/victory.mp3" type="audio/mpeg">
-</audio>
-<audio id="audio-defeat" hidden>
-  <source src="./assets/audio/defeat.mp3" type="audio/mpeg">
-</audio>
+<!-- ===================== AVISO DE ROTAÇÃO (fallback caso o navegador
+     não suporte travar a orientação automaticamente) ===================== -->
+<div id="rotate-hint" class="rotate-hint">
+  <p>📱 Gire seu aparelho para a horizontal para jogar</p>
+</div>
 
+<script src="./sound.js"></script>
 <script src="./characters.js"></script>
 <script src="./script.js"></script>
 </body>
