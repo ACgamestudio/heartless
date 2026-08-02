@@ -82,24 +82,33 @@ function goToSelect() {
 // --------------------------------------------------------------------------
 // TELA 4: SELEÇÃO DE PERSONAGEM
 // --------------------------------------------------------------------------
-const grid = document.getElementById('character-grid');
+const hotspotLayer = document.getElementById('hotspot-layer');
 const selectedNameEl = document.getElementById('selected-name');
 const btnConfirm = document.getElementById('btn-confirm');
 let selectedCharacter = null;
 
 CHARACTERS.forEach(ch => {
-  const card = document.createElement('div');
-  card.className = 'char-card';
-  card.style.setProperty('--card-color', ch.color);
-  card.dataset.id = ch.id;
-  card.innerHTML = `<img src="${charImg(ch.id)}" alt="${ch.name}"><span>${ch.name}</span>`;
-  card.addEventListener('click', () => selectCharacter(ch, card));
-  grid.appendChild(card);
+  const spot = document.createElement('div');
+  spot.className = 'hotspot';
+  spot.dataset.id = ch.id;
+  spot.style.setProperty('--spot-color', ch.color);
+  spot.style.left = ch.rect.left + '%';
+  spot.style.top = ch.rect.top + '%';
+  spot.style.width = ch.rect.width + '%';
+  spot.style.height = ch.rect.height + '%';
+
+  const label = document.createElement('span');
+  label.className = 'hotspot-label';
+  label.textContent = ch.name;
+  spot.appendChild(label);
+
+  spot.addEventListener('click', () => selectCharacter(ch, spot));
+  hotspotLayer.appendChild(spot);
 });
 
-function selectCharacter(ch, card) {
-  document.querySelectorAll('.char-card').forEach(c => c.classList.remove('selected'));
-  card.classList.add('selected');
+function selectCharacter(ch, spot) {
+  document.querySelectorAll('.hotspot').forEach(s => s.classList.remove('selected'));
+  spot.classList.add('selected');
   selectedCharacter = ch;
   selectedNameEl.textContent = `Selecionado: ${ch.name}`;
   btnConfirm.disabled = false;
@@ -112,16 +121,21 @@ btnConfirm.addEventListener('click', () => {
 });
 
 // --------------------------------------------------------------------------
-// TELA 5: JOGO — Jokenpô (pedra, papel, tesoura)
+// TELA 5: JOGO — Duelo estilo fighting game (vida + medidor de especial)
 // --------------------------------------------------------------------------
+const gameScreenEl = document.getElementById('screen-game');
 const playerPortrait = document.getElementById('player-portrait');
 const rivalPortrait = document.getElementById('rival-portrait');
 const playerNameEl = document.getElementById('player-name');
 const rivalNameEl = document.getElementById('rival-name');
-const playerPipsEl = document.getElementById('player-pips');
-const rivalPipsEl = document.getElementById('rival-pips');
-const rivalChoiceText = document.getElementById('rival-choice-text');
+const playerHpFill = document.getElementById('player-hp-fill');
+const rivalHpFill = document.getElementById('rival-hp-fill');
+const playerMeterFill = document.getElementById('player-meter-fill');
+const rivalMeterFill = document.getElementById('rival-meter-fill');
+const playerDmgEl = document.getElementById('player-dmg');
+const rivalDmgEl = document.getElementById('rival-dmg');
 const roundResult = document.getElementById('round-result');
+const btnSpecial = document.getElementById('btn-special');
 const btnMenu = document.getElementById('btn-menu');
 
 const overlayEnd = document.getElementById('overlay-end');
@@ -130,122 +144,218 @@ const overlaySubtitle = document.getElementById('overlay-subtitle');
 const btnRestart = document.getElementById('btn-restart');
 const btnBackMenu = document.getElementById('btn-back-menu');
 
-const WINS_NEEDED = 5;
+const MAX_HP = 100;
+const MOVE_LABEL = { punch: 'Soco', kick: 'Chute', block: 'Bloqueio', special: 'Especial' };
+
 let player = null;
 let rival = null;
-let playerScore = 0;
-let rivalScore = 0;
+let playerHP = MAX_HP;
+let rivalHP = MAX_HP;
+let playerMeter = 0;
+let rivalMeter = 0;
 let gameOver = false;
+let locked = false;
 
 function pickRival(excludeId) {
   const pool = CHARACTERS.filter(c => c.id !== excludeId);
   return pool[Math.floor(Math.random() * pool.length)];
 }
 
-function buildPips(container, color) {
-  container.innerHTML = '';
-  for (let i = 0; i < WINS_NEEDED; i++) {
-    const pip = document.createElement('div');
-    pip.className = 'pip';
-    container.appendChild(pip);
-  }
-}
-
-function updatePips(container, score) {
-  const pips = container.querySelectorAll('.pip');
-  pips.forEach((pip, i) => pip.classList.toggle('filled', i < score));
-}
+function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
 
 function startGame(chosen) {
   player = chosen;
   rival = pickRival(chosen.id);
-  playerScore = 0;
-  rivalScore = 0;
+  playerHP = MAX_HP;
+  rivalHP = MAX_HP;
+  playerMeter = 0;
+  rivalMeter = 0;
   gameOver = false;
+  locked = false;
 
   playerPortrait.src = charImg(player.id);
   rivalPortrait.src = charImg(rival.id);
   playerNameEl.textContent = player.name;
   rivalNameEl.textContent = rival.name;
 
-  buildPips(playerPipsEl, player.color);
-  buildPips(rivalPipsEl, rival.color);
-  updatePips(playerPipsEl, 0);
-  updatePips(rivalPipsEl, 0);
-
-  rivalChoiceText.innerHTML = '&nbsp;';
-  roundResult.innerHTML = '&nbsp;';
+  updateBars();
+  roundResult.textContent = 'Faça sua jogada!';
   overlayEnd.classList.add('hidden');
 
   showScreen('game');
   safePlay(audio.music);
 }
 
-const CHOICE_ICON = { pedra: '✊', papel: '✋', tesoura: '✌️' };
+function updateBars() {
+  playerHpFill.style.width = clamp(playerHP, 0, MAX_HP) + '%';
+  rivalHpFill.style.width = clamp(rivalHP, 0, MAX_HP) + '%';
+  playerMeterFill.style.width = clamp(playerMeter, 0, 100) + '%';
+  rivalMeterFill.style.width = clamp(rivalMeter, 0, 100) + '%';
+  btnSpecial.disabled = playerMeter < 100 || gameOver || locked;
+}
+
+// --------------------------------------------------------------------------
+// Escolha da CPU: golpe aleatório ponderado, usa especial se o medidor
+// estiver cheio.
+// --------------------------------------------------------------------------
+function cpuChoice() {
+  if (rivalMeter >= 100 && Math.random() < 0.55) return 'special';
+  const roll = Math.random();
+  if (roll < 0.38) return 'punch';
+  if (roll < 0.76) return 'kick';
+  return 'block';
+}
+
+// --------------------------------------------------------------------------
+// Resolve um turno: retorna dano e ganho de medidor para os dois lados,
+// além do texto descrevendo o que aconteceu.
+// --------------------------------------------------------------------------
+function resolveTurn(p, c) {
+  let pDmg = 0, cDmg = 0, pMeterGain = 10, cMeterGain = 10, text = '';
+
+  if (p === c) {
+    switch (p) {
+      case 'punch':
+        pDmg = 6; cDmg = 6;
+        text = `Os dois socaram ao mesmo tempo!`;
+        break;
+      case 'kick':
+        pDmg = 10; cDmg = 10;
+        text = `Chutes trocados na mesma hora!`;
+        break;
+      case 'block':
+        pMeterGain = 8; cMeterGain = 8;
+        text = `Os dois ficaram na defesa.`;
+        break;
+      case 'special':
+        pDmg = 22; cDmg = 22;
+        pMeterGain = -playerMeter; cMeterGain = -rivalMeter;
+        text = `OS ESPECIAIS SE CHOCARAM!`;
+        break;
+    }
+  } else if (p === 'punch' && c === 'kick') {
+    cDmg = 12;
+    text = `${player.name} socou antes do chute de ${rival.name}!`;
+  } else if (c === 'punch' && p === 'kick') {
+    pDmg = 12;
+    text = `${rival.name} socou antes do seu chute!`;
+  } else if (p === 'kick' && c === 'block') {
+    cDmg = 14;
+    text = `Seu chute quebrou a defesa de ${rival.name}!`;
+  } else if (c === 'kick' && p === 'block') {
+    pDmg = 14;
+    pMeterGain += 4;
+    text = `${rival.name} quebrou sua defesa com um chute!`;
+  } else if (p === 'block' && c === 'punch') {
+    cDmg = 3; pMeterGain += 6;
+    text = `Você bloqueou o soco e revidou!`;
+  } else if (c === 'block' && p === 'punch') {
+    pDmg = 3; cMeterGain += 6;
+    text = `${rival.name} bloqueou seu soco e revidou!`;
+  } else if (p === 'special') {
+    if (c === 'block') {
+      cDmg = 10;
+      text = `Você usou o ESPECIAL! ${rival.name} bloqueou parte do golpe.`;
+    } else {
+      cDmg = 28;
+      text = `Você acertou um ESPECIAL devastador!`;
+    }
+    pMeterGain = -playerMeter;
+  } else if (c === 'special') {
+    if (p === 'block') {
+      pDmg = 10;
+      text = `${rival.name} usou o ESPECIAL! Você bloqueou parte do golpe.`;
+    } else {
+      pDmg = 28;
+      text = `${rival.name} acertou um ESPECIAL devastador!`;
+    }
+    cMeterGain = -rivalMeter;
+  }
+
+  return { pDmg, cDmg, pMeterGain, cMeterGain, text };
+}
 
 document.querySelectorAll('.choice-btn').forEach(btn => {
   btn.addEventListener('click', () => {
-    if (gameOver) return;
-    playRound(btn.dataset.choice);
+    if (gameOver || locked) return;
+    if (btn.dataset.choice === 'special' && playerMeter < 100) return;
+    playTurn(btn.dataset.choice);
   });
 });
 
-function randomMachineChoice() {
-  const options = ['pedra', 'papel', 'tesoura'];
-  return options[Math.floor(Math.random() * 3)];
+function playTurn(playerMove) {
+  locked = true;
+  const rivalMove = cpuChoice();
+  const { pDmg, cDmg, pMeterGain, cMeterGain, text } = resolveTurn(playerMove, rivalMove);
+
+  playerHP = clamp(playerHP - pDmg, 0, MAX_HP);
+  rivalHP = clamp(rivalHP - cDmg, 0, MAX_HP);
+  playerMeter = clamp(playerMeter + pMeterGain, 0, 100);
+  rivalMeter = clamp(rivalMeter + cMeterGain, 0, 100);
+
+  updateBars();
+  roundResult.textContent = text;
+
+  if (pDmg > 0) { showDamage(playerDmgEl, pDmg); hit(playerPortrait); safePlay(audio.loseRound); }
+  if (cDmg > 0) { showDamage(rivalDmgEl, cDmg); hit(rivalPortrait); safePlay(audio.winRound); }
+  if (pDmg > 0 || cDmg > 0) shakeScreen();
+
+  setTimeout(() => {
+    if (playerHP <= 0 && rivalHP <= 0) {
+      endGame('draw');
+    } else if (rivalHP <= 0) {
+      endGame('win');
+    } else if (playerHP <= 0) {
+      endGame('lose');
+    } else {
+      locked = false;
+      btnSpecial.disabled = playerMeter < 100;
+    }
+  }, 450);
 }
 
-function playRound(humanChoice) {
-  const machineChoice = randomMachineChoice();
-
-  rivalChoiceText.textContent = `${rival.name} escolheu ${CHOICE_ICON[machineChoice]}`;
-
-  if (humanChoice === machineChoice) {
-    roundResult.textContent = 'Empate!';
-  } else if (
-    (humanChoice === 'papel' && machineChoice === 'pedra') ||
-    (humanChoice === 'pedra' && machineChoice === 'tesoura') ||
-    (humanChoice === 'tesoura' && machineChoice === 'papel')
-  ) {
-    playerScore++;
-    updatePips(playerPipsEl, playerScore);
-    roundResult.textContent = `${player.name} venceu a rodada!`;
-    bump(playerPortrait);
-    safePlay(audio.winRound);
-  } else {
-    rivalScore++;
-    updatePips(rivalPipsEl, rivalScore);
-    roundResult.textContent = `${rival.name} venceu a rodada!`;
-    bump(rivalPortrait);
-    safePlay(audio.loseRound);
-  }
-
-  if (playerScore === WINS_NEEDED) {
-    endGame(true);
-  } else if (rivalScore === WINS_NEEDED) {
-    endGame(false);
-  }
+function showDamage(el, amount) {
+  el.textContent = '-' + amount;
+  el.classList.remove('show');
+  void el.offsetWidth; // reinicia a animação
+  el.classList.add('show');
 }
 
-function bump(el) {
-  el.classList.add('bump');
-  setTimeout(() => el.classList.remove('bump'), 220);
+function hit(el) {
+  el.classList.add('hit');
+  setTimeout(() => el.classList.remove('hit'), 200);
 }
 
-function endGame(playerWon) {
+function shakeScreen() {
+  gameScreenEl.classList.remove('shake');
+  void gameScreenEl.offsetWidth;
+  gameScreenEl.classList.add('shake');
+}
+
+function endGame(result) {
   gameOver = true;
-  overlayTitle.textContent = playerWon ? 'VITÓRIA!' : 'DERROTA';
-  overlayTitle.style.color = playerWon ? 'var(--red)' : 'var(--muted)';
-  overlaySubtitle.textContent = playerWon
-    ? `${player.name} derrotou ${rival.name} por ${playerScore} a ${rivalScore}!`
-    : `${rival.name} derrotou ${player.name} por ${rivalScore} a ${playerScore}.`;
+  locked = true;
+
+  if (result === 'win') {
+    overlayTitle.textContent = 'VITÓRIA!';
+    overlayTitle.style.color = 'var(--red)';
+    overlaySubtitle.textContent = `${player.name} nocauteou ${rival.name}!`;
+  } else if (result === 'lose') {
+    overlayTitle.textContent = 'DERROTA';
+    overlayTitle.style.color = 'var(--muted)';
+    overlaySubtitle.textContent = `${rival.name} nocauteou ${player.name}.`;
+  } else {
+    overlayTitle.textContent = 'EMPATE';
+    overlayTitle.style.color = 'var(--cyan)';
+    overlaySubtitle.textContent = `Os dois caíram ao mesmo tempo!`;
+  }
 
   overlayEnd.classList.remove('hidden');
   audio.music.pause();
   audio.music.currentTime = 0;
-  safePlay(playerWon ? audio.victory : audio.defeat);
+  safePlay(result === 'win' ? audio.victory : audio.defeat);
 
-  if (playerWon) launchConfetti();
+  if (result === 'win') launchConfetti();
 }
 
 btnRestart.addEventListener('click', () => {

@@ -1,6 +1,6 @@
 # Heart Less OwO Jokenpô
 
-Jogo de pedra-papel-tesoura com o elenco original de **Heart Less OwO** (16
+Jogo de luta (fighting game) com o elenco original de **Heart Less OwO** (16
 personagens: Heart, Teddy, Lolly, Zuko, Miyu, Razor, Shadow, Blitz, Toxin,
 Nya, Yuki, Star, Void, King, Kai e Spark). Nenhum personagem, imagem, som ou
 vídeo do Dragon Ball é usado — todo o visual vem do seu pôster
@@ -18,31 +18,35 @@ estático). Não precisa de instalação nem build.
    tocam com som.
 2. **Vídeo da produtora** — `assets/videos/produtora.mp4`.
 3. **Vídeo de intro** — `assets/videos/intro.mp4`.
-4. **Seleção de personagem** — grade com os 16 lutadores.
-5. **Jogo** — pedra/papel/tesoura contra um rival sorteado entre os outros
-   personagens. Primeiro a 5 vitórias ganha.
+4. **Seleção de personagem** — pôster inteiro com áreas clicáveis por cima de
+   cada um dos 16 lutadores.
+5. **Jogo** — duelo estilo fighting game contra um rival sorteado entre os
+   outros personagens. Cada um tem uma barra de vida e um medidor de
+   especial. A cada rodada você escolhe **Soco**, **Chute**, **Bloqueio** ou
+   **Especial** (só disponível com o medidor cheio). Soco vence Chute, Chute
+   quebra Bloqueio, Bloqueio anula Soco, e o Especial causa dano pesado
+   (reduzido se bloqueado). Quem zerar a vida primeiro perde.
 
-Se um vídeo ainda não existir, o jogo detecta o erro automaticamente e pula
-para a próxima tela sozinho (ou use o botão "Pular"), então você pode testar
-tudo agora mesmo e ir adicionando os arquivos depois.
+`produtora.mp4` e `intro.mp4` já estão incluídos em `assets/videos/`. Se um
+vídeo não carregar por algum motivo (arquivo corrompido, codec não suportado
+etc.), o jogo detecta o erro automaticamente e pula para a próxima tela
+sozinho (ou use o botão "Pular"), então o fluxo nunca trava.
 
-## Arquivos que você ainda precisa adicionar
+## Arquivos que você ainda pode adicionar (opcionais)
 
-Coloque os arquivos com **exatamente** esses nomes nas pastas indicadas:
+Coloque os arquivos com **exatamente** esses nomes em `assets/audio/`:
 
-| Arquivo | Pasta | Obrigatório? |
-|---|---|---|
-| `produtora.mp4` | `assets/videos/` | Opcional (pula automaticamente se faltar) |
-| `intro.mp4` | `assets/videos/` | Opcional (pula automaticamente se faltar) |
-| `music.mp3` | `assets/audio/` | Opcional — música de fundo do menu/jogo |
-| `select.mp3` | `assets/audio/` | Opcional — som ao escolher personagem |
-| `win_round.mp3` | `assets/audio/` | Opcional — som ao vencer uma rodada |
-| `lose_round.mp3` | `assets/audio/` | Opcional — som ao perder uma rodada |
-| `victory.mp3` | `assets/audio/` | Opcional — som da vitória final |
-| `defeat.mp3` | `assets/audio/` | Opcional — som da derrota final |
+| Arquivo | Uso |
+|---|---|
+| `music.mp3` | Música de fundo do menu/jogo |
+| `select.mp3` | Som ao escolher personagem |
+| `win_round.mp3` | Som ao vencer uma rodada |
+| `lose_round.mp3` | Som ao perder uma rodada |
+| `victory.mp3` | Som da vitória final |
+| `defeat.mp3` | Som da derrota final |
 
-Todos os sons/vídeos são opcionais: o jogo funciona 100% sem eles, só fica
-mais chamativo com eles. Use apenas arquivos que você mesmo criou ou tenha
+Todos os sons são opcionais: o jogo funciona 100% sem eles, só fica mais
+chamativo com eles. Use apenas arquivos que você mesmo criou ou tenha
 licença/direito de uso — evite trilhas, efeitos ou clipes de outras obras
 registradas para não correr risco de direitos autorais de novo.
 
@@ -57,8 +61,10 @@ assets/
   img/
     poster.png          -> seu pôster completo
     characters/*.png     -> cada personagem já recortado do pôster
-  videos/                -> coloque produtora.mp4 e intro.mp4 aqui
-  audio/                 -> coloque os .mp3 opcionais aqui
+  videos/
+    produtora.mp4         -> vídeo da produtora (já incluído)
+    intro.mp4              -> vídeo de intro (já incluído)
+  audio/                 -> coloque os .mp3 opcionais aqui (veja tabela acima)
 ```
 
 ## Personalizar

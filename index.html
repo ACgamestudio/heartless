@@ -19,7 +19,7 @@
     <h1 class="logo">HEART LESS <span class="owo">OwO</span></h1>
     <p class="subtitle">JOKENPÔ</p>
     <button id="btn-start" class="btn-glow">INICIAR</button>
-    <p class="hint">🔊 toque para iniciar com som</p>
+
   </div>
 </section>
 
@@ -47,8 +47,16 @@
 
 <!-- ===================== TELA 4: SELEÇÃO DE PERSONAGEM ===================== -->
 <section id="screen-select" class="screen">
+  <div class="glow-bg">
+    <div class="glow-blob glow-red"></div>
+    <div class="glow-blob glow-pink"></div>
+    <div class="glow-blob glow-cyan"></div>
+  </div>
   <h2 class="section-title">ESCOLHA SEU LUTADOR</h2>
-  <div id="character-grid" class="character-grid"></div>
+  <div class="poster-select-wrap">
+    <img src="./assets/img/poster.png" class="poster-select-img" alt="Elenco Heart Less OwO">
+    <div id="hotspot-layer" class="hotspot-layer"></div>
+  </div>
   <div class="select-bar">
     <div class="select-info">
       <span id="selected-name">Nenhum personagem selecionado</span>
@@ -57,33 +65,58 @@
   </div>
 </section>
 
-<!-- ===================== TELA 5: JOGO ===================== -->
+<!-- ===================== TELA 5: JOGO (estilo fighting game) ===================== -->
 <section id="screen-game" class="screen">
-  <div class="hud">
-    <div class="hud-player">
-      <img id="player-portrait" class="portrait" alt="jogador">
-      <div class="hud-info">
-        <span id="player-name">Você</span>
-        <div class="pips" id="player-pips"></div>
-      </div>
+  <div class="glow-bg">
+    <div class="glow-blob glow-red"></div>
+    <div class="glow-blob glow-pink"></div>
+    <div class="glow-blob glow-cyan"></div>
+  </div>
+  <div class="arena-lines"></div>
+
+  <p class="game-subtitle">NOCAUTEIE O RIVAL!</p>
+
+  <div class="fight-hud">
+    <div class="fighter-block">
+      <span id="player-name" class="fighter-name">Você</span>
+      <div class="hp-bar-outer"><div id="player-hp-fill" class="hp-bar-fill hp-fill-player"></div></div>
+      <div class="meter-bar-outer"><div id="player-meter-fill" class="meter-bar-fill"></div></div>
     </div>
-    <div class="hud-vs">VS</div>
-    <div class="hud-player hud-rival">
-      <div class="hud-info hud-info-right">
-        <span id="rival-name">Rival</span>
-        <div class="pips" id="rival-pips"></div>
-      </div>
-      <img id="rival-portrait" class="portrait" alt="rival">
+
+    <div class="hud-vs">
+      <svg class="vs-bolt" viewBox="0 0 40 100" fill="none">
+        <path d="M24 0 L4 55 L18 55 L14 100 L38 40 L22 40 Z" fill="currentColor"/>
+      </svg>
+      <span>VS</span>
+    </div>
+
+    <div class="fighter-block fighter-block-rival">
+      <span id="rival-name" class="fighter-name">Rival</span>
+      <div class="hp-bar-outer"><div id="rival-hp-fill" class="hp-bar-fill hp-fill-rival"></div></div>
+      <div class="meter-bar-outer"><div id="rival-meter-fill" class="meter-bar-fill"></div></div>
     </div>
   </div>
 
-  <p id="rival-choice-text" class="rival-choice-text">&nbsp;</p>
-  <p id="round-result" class="round-result">&nbsp;</p>
+  <div class="stage-row">
+    <div class="portrait-stage stage-player">
+      <img id="player-portrait" class="portrait" alt="jogador">
+      <span id="player-dmg" class="dmg-popup"></span>
+    </div>
+    <div class="portrait-stage stage-rival">
+      <img id="rival-portrait" class="portrait" alt="rival">
+      <span id="rival-dmg" class="dmg-popup"></span>
+    </div>
+  </div>
+
+  <div class="result-panel">
+    <p id="round-result" class="round-result">Faça sua jogada!</p>
+  </div>
 
   <div class="choices">
-    <button class="choice-btn" data-choice="pedra">✊<span>Pedra</span></button>
-    <button class="choice-btn" data-choice="papel">✋<span>Papel</span></button>
-    <button class="choice-btn" data-choice="tesoura">✌️<span>Tesoura</span></button>
+    <button class="choice-btn" data-choice="punch">👊<span>Soco</span></button>
+    <button class="choice-btn" data-choice="kick">🦵<span>Chute</span></button>
+    <button class="choice-btn" data-choice="block">🛡️<span>Bloqueio</span></button>
+    <button id="btn-special" class="choice-btn choice-special" data-choice="special" disabled>💥<span>Especial</span></button>
   </div>
 
   <button id="btn-menu" class="btn-ghost">← Menu</button>
