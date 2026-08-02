@@ -1,52 +1,128 @@
 <!DOCTYPE html>
 <html lang="pt-br">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="./styles.css">
-    <title>JokenPô</title>
-
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Heart Less OwO Jokenpô</title>
+<link rel="stylesheet" href="./styles.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Rubik:wght@400;600;800&display=swap" rel="stylesheet">
 </head>
+<body>
 
-<body>/
-    <audio id="bg-music" loop hidden>
-        <source src="./assets/music.mp3" type="audio/mpeg">
-    </audio>
-    <video autoplay muted loop class="video">
-        <source src="./assets/dragon.mp4" type="video/mp4">
-    </video>
-    <div class="container">
-        <h1>JokenPô</h1>
-        <audio id="audio-boo" src="./assets/chega.mp3"></audio>
-        <img class="boo" src="" alt="">
-        <p class="win"></p> 
-        <button class="restart-btn" onclick="restartGame()">Restart</button>
+<!-- ===================== TELA 1: ABERTURA / MENU ===================== -->
+<section id="screen-start" class="screen active">
+  <div class="poster-bg" style="background-image:url('./assets/img/poster.png')"></div>
+  <div class="vignette"></div>
+  <div class="start-content">
+    <h1 class="logo">HEART LESS <span class="owo">OwO</span></h1>
+    <p class="subtitle">JOKENPÔ</p>
+    <button id="btn-start" class="btn-glow">INICIAR</button>
+    <p class="hint">🔊 toque para iniciar com som</p>
+  </div>
+</section>
 
+<!-- ===================== TELA 2: VÍDEO PRODUTORA ===================== -->
+<section id="screen-produtora" class="screen video-screen">
+  <video id="video-produtora" playsinline>
+    <source src="./assets/videos/produtora.mp4" type="video/mp4">
+  </video>
+  <div class="video-fallback">
+    <p>PRODUTORA</p>
+  </div>
+  <button class="btn-skip" data-skip="produtora">Pular ▶</button>
+</section>
 
-        <p class="veggetaChoice"></p>
-        <div class="button">
-            <button class="pedra" onclick="playhuman('pedra')">&#x270A</button>
-            <button class="papel" onclick="playhuman('papel')">&#x1F590</button>
-            <button class="tesoura" onclick="playhuman('tesoura')">&#x270C</button>
-            <img class="victory" alt="">
+<!-- ===================== TELA 3: VÍDEO INTRO ===================== -->
+<section id="screen-intro" class="screen video-screen">
+  <video id="video-intro" playsinline>
+    <source src="./assets/videos/intro.mp4" type="video/mp4">
+  </video>
+  <div class="video-fallback">
+    <p>HEART LESS OwO</p>
+  </div>
+  <button class="btn-skip" data-skip="intro">Pular ▶</button>
+</section>
 
-            <p class="result"></p>
-        </div>
-
-        <p>Goku <span class="scoreGoku">0</span></p>
-        <p>Vegeta <span class="scoreVeggeta">0</span></p>
-        <div class="img">
-            <img class="goku" src="./assets/goku.gif" alt="goku">
-            <img class="veggeta" src="./assets/veggeta.gif" alt="veggeta">
-        </div>
+<!-- ===================== TELA 4: SELEÇÃO DE PERSONAGEM ===================== -->
+<section id="screen-select" class="screen">
+  <h2 class="section-title">ESCOLHA SEU LUTADOR</h2>
+  <div id="character-grid" class="character-grid"></div>
+  <div class="select-bar">
+    <div class="select-info">
+      <span id="selected-name">Nenhum personagem selecionado</span>
     </div>
-    <img class="title" src="./assets/DRAGON-BALL-06-07-2025.png" alt="letreiro">
-    <audio id="audio-goku" src="./assets/goku.mp3"></audio>
-    <audio id="audio-veggeta" src="./assets/veggeta.mp3"></audio>
+    <button id="btn-confirm" class="btn-glow" disabled>CONFIRMAR</button>
+  </div>
+</section>
 
+<!-- ===================== TELA 5: JOGO ===================== -->
+<section id="screen-game" class="screen">
+  <div class="hud">
+    <div class="hud-player">
+      <img id="player-portrait" class="portrait" alt="jogador">
+      <div class="hud-info">
+        <span id="player-name">Você</span>
+        <div class="pips" id="player-pips"></div>
+      </div>
+    </div>
+    <div class="hud-vs">VS</div>
+    <div class="hud-player hud-rival">
+      <div class="hud-info hud-info-right">
+        <span id="rival-name">Rival</span>
+        <div class="pips" id="rival-pips"></div>
+      </div>
+      <img id="rival-portrait" class="portrait" alt="rival">
+    </div>
+  </div>
 
+  <p id="rival-choice-text" class="rival-choice-text">&nbsp;</p>
+  <p id="round-result" class="round-result">&nbsp;</p>
+
+  <div class="choices">
+    <button class="choice-btn" data-choice="pedra">✊<span>Pedra</span></button>
+    <button class="choice-btn" data-choice="papel">✋<span>Papel</span></button>
+    <button class="choice-btn" data-choice="tesoura">✌️<span>Tesoura</span></button>
+  </div>
+
+  <button id="btn-menu" class="btn-ghost">← Menu</button>
+</section>
+
+<!-- ===================== OVERLAY: FIM DE JOGO ===================== -->
+<div id="overlay-end" class="overlay hidden">
+  <canvas id="confetti-canvas"></canvas>
+  <div class="overlay-content">
+    <h2 id="overlay-title">VITÓRIA</h2>
+    <p id="overlay-subtitle"></p>
+    <div class="overlay-buttons">
+      <button id="btn-restart" class="btn-glow">JOGAR NOVAMENTE</button>
+      <button id="btn-back-menu" class="btn-ghost">MENU INICIAL</button>
+    </div>
+  </div>
+</div>
+
+<!-- ÁUDIOS (opcionais, adicione seus próprios arquivos em assets/audio/) -->
+<audio id="audio-music" loop hidden>
+  <source src="./assets/audio/music.mp3" type="audio/mpeg">
+</audio>
+<audio id="audio-select" hidden>
+  <source src="./assets/audio/select.mp3" type="audio/mpeg">
+</audio>
+<audio id="audio-win-round" hidden>
+  <source src="./assets/audio/win_round.mp3" type="audio/mpeg">
+</audio>
+<audio id="audio-lose-round" hidden>
+  <source src="./assets/audio/lose_round.mp3" type="audio/mpeg">
+</audio>
+<audio id="audio-victory" hidden>
+  <source src="./assets/audio/victory.mp3" type="audio/mpeg">
+</audio>
+<audio id="audio-defeat" hidden>
+  <source src="./assets/audio/defeat.mp3" type="audio/mpeg">
+</audio>
+
+<script src="./characters.js"></script>
+<script src="./script.js"></script>
 </body>
-<script src="./scripts.js"></script>
-
 </html>

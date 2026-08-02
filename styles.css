@@ -1,155 +1,477 @@
-body,
-html {
+:root {
+  --void: #09050f;
+  --panel: #160d20;
+  --panel-2: #1e1229;
+  --red: #ff2d55;
+  --pink: #ff4fd1;
+  --cyan: #38e8ff;
+  --text: #f5eef8;
+  --muted: #a58fb5;
+  --font-display: 'Bungee', system-ui, sans-serif;
+  --font-body: 'Rubik', system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
   margin: 0;
   padding: 0;
+  width: 100%;
   height: 100%;
+  background: var(--void);
+  color: var(--text);
+  font-family: var(--font-body);
   overflow: hidden;
 }
 
+button { font-family: var(--font-body); }
 
-.video {
+/* ===================== SCREENS ===================== */
+.screen {
   position: fixed;
-  top: 0;
-  left: 0;
-  min-width: 100%;
-  min-height: 100%;
-  object-fit: cover;
-  z-index: -1;
+  inset: 0;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity .5s ease;
 }
 
+.screen.active {
+  display: flex;
+  opacity: 1;
+}
 
-.container {
+/* ===================== TELA 1: START ===================== */
+#screen-start { overflow: hidden; }
 
+.poster-bg {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center 15%;
+  filter: saturate(1.05);
+  transform: scale(1.04);
+}
+
+.vignette {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(9,5,15,.55) 0%, rgba(9,5,15,.35) 40%, rgba(9,5,15,.92) 100%),
+    radial-gradient(ellipse at center, rgba(9,5,15,.1) 0%, rgba(9,5,15,.75) 100%);
+}
+
+.start-content {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  padding-bottom: 4vh;
+  margin-top: auto;
+}
+
+.logo {
+  font-family: var(--font-display);
+  font-size: clamp(2.2rem, 6vw, 4.2rem);
+  margin: 0;
+  letter-spacing: 2px;
+  color: var(--text);
+  text-shadow:
+    0 0 6px var(--red),
+    0 0 22px var(--red),
+    0 0 46px rgba(255,45,85,.6);
+  animation: flicker 4.5s infinite;
+}
+
+.logo .owo {
+  color: var(--pink);
+  text-shadow: 0 0 6px var(--pink), 0 0 22px var(--pink), 0 0 46px rgba(255,79,209,.7);
+}
+
+.subtitle {
+  font-family: var(--font-display);
+  color: var(--muted);
+  letter-spacing: 10px;
+  font-size: clamp(.8rem, 2vw, 1.1rem);
+  margin: .3rem 0 2rem;
+}
+
+@keyframes flicker {
+  0%, 3%, 6%, 100% { opacity: 1; }
+  4% { opacity: .6; }
+  5% { opacity: .92; }
+}
+
+.btn-glow {
+  font-family: var(--font-display);
+  background: var(--red);
+  color: #fff;
+  border: none;
+  padding: 1rem 3rem;
+  font-size: 1.1rem;
+  letter-spacing: 3px;
+  border-radius: 6px;
+  cursor: pointer;
+  box-shadow: 0 0 18px rgba(255,45,85,.75), 0 0 46px rgba(255,45,85,.35);
+  transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
+}
+
+.btn-glow:hover:not(:disabled) {
+  transform: translateY(-2px) scale(1.03);
+  box-shadow: 0 0 26px rgba(255,79,209,.9), 0 0 60px rgba(255,79,209,.5);
+  background: var(--pink);
+}
+
+.btn-glow:disabled {
+  opacity: .35;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.hint {
+  margin-top: 1rem;
+  color: var(--muted);
+  font-size: .85rem;
+  letter-spacing: 1px;
+}
+
+.btn-ghost {
+  font-family: var(--font-body);
+  font-weight: 600;
+  background: transparent;
+  border: 2px solid var(--muted);
+  color: var(--text);
+  padding: .7rem 1.6rem;
+  border-radius: 6px;
+  cursor: pointer;
+  letter-spacing: 1px;
+  transition: border-color .15s ease, color .15s ease;
+}
+
+.btn-ghost:hover {
+  border-color: var(--cyan);
+  color: var(--cyan);
+}
+
+/* ===================== TELA 2/3: VÍDEOS ===================== */
+.video-screen {
+  background: #000;
+}
+
+.video-screen video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.video-fallback {
   position: relative;
   z-index: 1;
-  background-color: #ffffff;
   text-align: center;
-  opacity: 0.8;
-  border-radius: 10px;
-  padding: 10px;
-  width: 250px;
-  margin-left: auto;
-  margin-right: auto;
-  margin-top: 5%;
-
-}
-
-
-.goku {
-  height: 100px;
-  width: 100px;
-  margin-left: 10%;
-
-
-}
-
-.veggeta {
-  height: 100px;
-  width: 100px;
-  margin-left: 5%;
-
-}
-
-button {
-  font-size: 50px;
-  cursor: pointer;
-}
-
-button:hover {
-  opacity: 0.5;
-}
-
-p {
-  display: flex;
-  font-size: 20px;
-  font-weight: 800;
-  display: inline-block;
-  gap: 20px;
-}
-
-.title {
-  display: flex;
-  height: 200px;
-  width: 300px;
-  margin-left: auto;
-  margin-right: auto;
-  opacity: 0.5;
-}
-
-.boo {
-  opacity: 1;
   display: none;
+}
+
+.video-fallback p {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  letter-spacing: 4px;
+  color: var(--muted);
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: .4; }
+  50% { opacity: 1; }
+}
+
+.btn-skip {
   position: absolute;
-  top: 50%;
-  left: 30%;
-  transform: translate(-50%, -50%);
-  width: 800px;
-  height: 600px;
-  z-index: 10;
+  bottom: 5%;
+  right: 5%;
+  z-index: 2;
+  background: rgba(0,0,0,.5);
+  border: 1px solid var(--muted);
+  color: var(--text);
+  padding: .6rem 1.2rem;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: .85rem;
+  letter-spacing: 1px;
+  backdrop-filter: blur(4px);
 }
 
-.restart-btn {
-  display: none;
+.btn-skip:hover { border-color: var(--pink); color: var(--pink); }
+
+/* ===================== TELA 4: SELEÇÃO ===================== */
+#screen-select {
+  padding: 3vh 4vw;
+  height: 100%;
+  background: radial-gradient(ellipse at top, var(--panel-2) 0%, var(--void) 70%);
+}
+
+.section-title {
+  font-family: var(--font-display);
+  letter-spacing: 3px;
+  font-size: clamp(1.2rem, 3vw, 2rem);
+  color: var(--text);
+  text-shadow: 0 0 16px rgba(255,79,209,.5);
+  margin: 0 0 2vh;
+}
+
+.character-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 12px;
+  width: 100%;
+  max-width: 1200px;
+  overflow-y: auto;
+  padding: 4px;
+}
+
+.char-card {
+  position: relative;
+  background: var(--panel);
+  border: 2px solid transparent;
+  border-radius: 10px;
+  overflow: hidden;
+  cursor: pointer;
+  aspect-ratio: 3/4;
+  transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+
+.char-card img {
+  width: 100%;
+  height: 75%;
+  object-fit: cover;
+  object-position: top center;
+  display: block;
+}
+
+.char-card span {
+  display: block;
+  text-align: center;
+  font-size: .75rem;
+  font-weight: 600;
+  padding: 6px 2px;
+  color: var(--text);
+}
+
+.char-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--muted);
+}
+
+.char-card.selected {
+  border-color: var(--card-color, var(--pink));
+  box-shadow: 0 0 16px var(--card-color, var(--pink));
+}
+
+.select-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+  width: 100%;
+  max-width: 1200px;
+  margin-top: 2vh;
+  padding-top: 1.5vh;
+  border-top: 1px solid var(--panel-2);
+}
+
+.select-info {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  color: var(--muted);
+  letter-spacing: 1px;
+}
+
+/* ===================== TELA 5: JOGO ===================== */
+#screen-game {
+  padding: 3vh 4vw;
+  height: 100%;
+  justify-content: space-between;
+  background: radial-gradient(ellipse at center, var(--panel-2) 0%, var(--void) 75%);
+}
+
+.hud {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 900px;
+}
+
+.hud-player {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.hud-rival { flex-direction: row-reverse; }
+
+.portrait {
+  width: 90px;
+  height: 90px;
+  object-fit: cover;
+  object-position: top center;
+  border-radius: 12px;
+  border: 3px solid var(--red);
+  box-shadow: 0 0 14px rgba(255,45,85,.5);
+  transition: transform .2s ease;
+}
+
+.hud-rival .portrait {
+  border-color: var(--cyan);
+  box-shadow: 0 0 14px rgba(56,232,255,.5);
+}
+
+.portrait.bump { transform: scale(1.15); }
+
+.hud-info { display: flex; flex-direction: column; gap: 6px; }
+.hud-info-right { align-items: flex-end; }
+
+.hud-info span {
+  font-family: var(--font-display);
+  font-size: .95rem;
+  letter-spacing: 1px;
+}
+
+.pips { display: flex; gap: 5px; }
+.hud-info-right .pips { flex-direction: row-reverse; }
+
+.pip {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid var(--muted);
+  background: transparent;
+  transition: background .2s ease, border-color .2s ease;
+}
+
+.pip.filled {
+  background: var(--red);
+  border-color: var(--red);
+}
+
+.hud-rival .pip.filled {
+  background: var(--cyan);
+  border-color: var(--cyan);
+}
+
+.hud-vs {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  color: var(--pink);
+  text-shadow: 0 0 14px var(--pink);
+}
+
+.rival-choice-text, .round-result {
+  font-family: var(--font-display);
+  text-align: center;
+  min-height: 1.6em;
+  letter-spacing: 1px;
+  font-size: 1rem;
+  color: var(--muted);
+}
+
+.round-result { font-size: 1.3rem; color: var(--text); }
+
+.choices {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.choice-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  background: var(--panel);
+  border: 2px solid var(--panel-2);
+  color: var(--text);
+  font-size: 2.4rem;
+  padding: 1rem 1.4rem;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: transform .15s ease, border-color .15s ease, background .15s ease;
+}
+
+.choice-btn span {
+  font-size: .75rem;
+  font-family: var(--font-body);
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: var(--muted);
+}
+
+.choice-btn:hover {
+  transform: translateY(-4px);
+  border-color: var(--pink);
+  background: var(--panel-2);
+}
+
+/* ===================== OVERLAY FIM DE JOGO ===================== */
+.overlay {
   position: fixed;
-  top: 90%;
-  left: 47%;
-  transform: translateX(-50%);
-  padding: 10px 20px;
-  font-size: 1.2rem;
-  background-color: #f44336;
-  color: white;
-  border: none;
-  border-radius: 10px;
-  cursor: pointer;
-  z-index: 10000;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(9,5,15,.88);
+  backdrop-filter: blur(3px);
+  transition: opacity .3s ease;
 }
 
-.restart-btn:hover {
-  background-color: #d32f2f;
-}
+.overlay.hidden { display: none; }
 
-.win {
-  
-  margin-left: auto;
-  margin-right: auto;
-  font-weight: 800;
-  font-size: 50px;
-  color: #d32f2f;
-  display: none;
+#confetti-canvas {
   position: absolute;
-  top: 90%;
-  left: 35%;
-
-  transform: translate(-50%, -50%);
-  padding: 10px 20px;
-  z-index: 10000;
+  inset: 0;
+  width: 100%;
+  height: 100%;
 }
 
-@media screen and (max-width:1000px) {
-  .video {
-    width: 50%;
-  }
+.overlay-content {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+}
 
-  .container {
-    margin-top: 10%;
-  }
+#overlay-title {
+  font-family: var(--font-display);
+  font-size: clamp(2.4rem, 7vw, 4.5rem);
+  margin: 0;
+  color: var(--red);
+  text-shadow: 0 0 20px var(--red), 0 0 60px rgba(255,45,85,.6);
+}
 
-  .title {
-    margin-top: 5%;
-  }
+#overlay-subtitle {
+  color: var(--muted);
+  margin: .6rem 0 2rem;
+  font-size: 1rem;
+  letter-spacing: 1px;
+}
 
-  .boo {
-    display: none;
-    position: absolute;
-    top: 70%;
-    left: 30%;
-    transform: translate(-50%, -50%);
-    width: 1000px;
-    height: 800px;
-    z-index: 10;
-  }
+.overlay-buttons {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}
 
+/* ===================== RESPONSIVE ===================== */
+@media screen and (max-width: 900px) {
+  .character-grid { grid-template-columns: repeat(4, 1fr); }
+  .portrait { width: 64px; height: 64px; }
+  .choice-btn { font-size: 1.8rem; padding: .8rem 1rem; }
+  .hud-vs { font-size: 1rem; }
+}
 
-
-
+@media screen and (max-width: 520px) {
+  .character-grid { grid-template-columns: repeat(3, 1fr); }
+  .select-bar { flex-direction: column; gap: .8rem; align-items: stretch; }
+  #btn-confirm { width: 100%; }
 }
