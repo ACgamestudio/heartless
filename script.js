@@ -2,6 +2,31 @@
 // Heart Less OwO Jokenpô — lógica principal
 // ==========================================================================
 
+// --------------------------------------------------------------------------
+// --vw / --vh corrigidos: quando o hack de "forçar paisagem" (rotate 90deg
+// em html) está ativo, window.innerWidth/innerHeight continuam sendo os
+// valores FÍSICOS (não-rotacionados) da tela. Isso faz qualquer `vw`/`vh`
+// usado no CSS calcular contra o eixo errado. Aqui a gente detecta se o
+// hack está ativo (mesma condição do media query que dispara o rotate) e,
+// nesse caso, troca width<->height antes de virar variável CSS. O resto do
+// styles.css usa var(--vw)/var(--vh) no lugar de vw/vh cru.
+// --------------------------------------------------------------------------
+function updateViewportUnits() {
+  const rotateHackActive = window.matchMedia(
+    '(max-width: 900px) and (orientation: portrait)'
+  ).matches;
+
+  const visualWidth = rotateHackActive ? window.innerHeight : window.innerWidth;
+  const visualHeight = rotateHackActive ? window.innerWidth : window.innerHeight;
+
+  document.documentElement.style.setProperty('--vw', (visualWidth / 100) + 'px');
+  document.documentElement.style.setProperty('--vh', (visualHeight / 100) + 'px');
+}
+
+updateViewportUnits();
+window.addEventListener('resize', updateViewportUnits);
+window.addEventListener('orientationchange', updateViewportUnits);
+
 const screens = {
   start: document.getElementById('screen-start'),
   produtora: document.getElementById('screen-produtora'),
@@ -100,13 +125,11 @@ let selectedCharacter = null;
 CHARACTERS.forEach(ch => {
   const card = document.createElement('button');
   card.className = 'char-card-img';
-  if (ch.id === 'heart') card.classList.add('card-heart');
   card.type = 'button';
   card.dataset.id = ch.id;
   card.style.setProperty('--card-color', ch.color);
-  card.style.gridArea = ch.id;
-  card.style.aspectRatio = ch.id === 'heart' ? `${ch.w} / ${ch.h}` : '1 / 1';
-  const namePlate = ch.id === 'heart' ? '' : `<div class="char-name-plate"><span>${ch.name}</span></div>`;
+  card.style.aspectRatio = '1 / 1';
+  const namePlate = `<div class="char-name-plate"><span>${ch.name}</span></div>`;
   card.innerHTML = `<img src="${charImg(ch.id)}" alt="${ch.name}">${namePlate}`;
   card.addEventListener('click', () => selectCharacter(ch, card));
   characterGrid.appendChild(card);
