@@ -4,7 +4,7 @@
 // Dragon Ball é usado no jogo.
 
 const CHARACTERS = [
-  { id: 'heart',  name: 'Jokenpô', color: '#ff2d55' },
+  { id: 'heart',  name: 'Heart',   color: '#ff2d55' },
   { id: 'teddy',  name: 'Teddy',   color: '#e0a838' },
   { id: 'lolly',  name: 'Lolly',   color: '#ff3d9e' },
   { id: 'zuko',   name: 'Zuko',    color: '#2d8bff' },

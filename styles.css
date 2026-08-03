@@ -26,6 +26,27 @@ html, body {
 
 button { font-family: var(--font-body); }
 
+/* ===================== PAISAGEM FORÇADA (celulares) =====================
+   Em telas pequenas seguradas na vertical, gira o documento inteiro 90°
+   por CSS puro. Funciona desde o primeiro carregamento da página, sem
+   precisar de nenhum toque do usuário e sem depender da Screen
+   Orientation API (que o Safari/iOS nunca suportou). Assim que o
+   navegador consegue travar a orientação de verdade (tela cheia após o
+   toque em "INICIAR"), o media query "orientation: portrait" deixa de
+   bater e esse hack se desliga sozinho. */
+@media screen and (max-width: 900px) and (orientation: portrait) {
+  html {
+    width: 100vh;
+    height: 100vw;
+    position: absolute;
+    top: 0;
+    left: 100%;
+    transform-origin: left top;
+    transform: rotate(90deg);
+    overflow: hidden;
+  }
+}
+
 /* ===================== SCREENS ===================== */
 .screen {
   position: fixed;
@@ -258,12 +279,21 @@ button { font-family: var(--font-body); }
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(3, minmax(80px, 1fr)) minmax(140px, 1.5fr) repeat(3, minmax(80px, 1fr));
+  grid-template-areas:
+    "teddy lolly zuko  heart miyu razor shadow"
+    "blitz toxin .     heart nya  yuki  star"
+    "void  king  .     heart .    kai   spark";
+  gap: 10px;
   width: min(100%, 1200px);
-  max-height: 62vh;
+  max-height: 64vh;
   overflow-y: auto;
   padding: 6px;
+}
+
+.char-card-img.card-heart img {
+  height: 100%;
+  object-fit: cover;
 }
 
 .char-card-img {
@@ -322,32 +352,6 @@ button { font-family: var(--font-body); }
   font-size: 1rem;
   color: var(--muted);
   letter-spacing: 1px;
-}
-
-/* ===================== AVISO DE ROTAÇÃO (fallback mobile) ===================== */
-.rotate-hint {
-  display: none;
-  position: fixed;
-  inset: 0;
-  z-index: 500;
-  background: var(--void);
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  padding: 2rem;
-  gap: 1rem;
-}
-
-.rotate-hint p {
-  font-family: var(--font-display);
-  font-size: 1.1rem;
-  color: var(--text);
-  letter-spacing: 1px;
-}
-
-@media screen and (orientation: portrait) {
-  body.started .rotate-hint { display: flex; }
 }
 
 /* ===================== TELA 5: JOGO (fighting game) ===================== */
@@ -743,7 +747,12 @@ button { font-family: var(--font-body); }
 
 /* ===================== RESPONSIVE ===================== */
 @media screen and (max-width: 900px) {
-  .character-grid { max-height: 46vh; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); }
+  .character-grid {
+    max-height: 46vh;
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    grid-template-areas: none;
+  }
+  .char-card-img.card-heart img { height: auto; object-fit: initial; }
   .stage-row { gap: 3rem; }
   .portrait, .portrait-stage { width: 84px; height: 84px; }
   .choice-btn { font-size: 1.8rem; padding: .8rem 1rem; }

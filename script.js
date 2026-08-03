@@ -36,8 +36,6 @@ async function enterImmersiveMode() {
       await screen.orientation.lock('landscape');
     }
   } catch (e) { /* navegador não suporta travar orientação (ex: iOS Safari) */ }
-
-  document.body.classList.add('started');
 }
 
 // --------------------------------------------------------------------------
@@ -99,9 +97,11 @@ let selectedCharacter = null;
 CHARACTERS.forEach(ch => {
   const card = document.createElement('button');
   card.className = 'char-card-img';
+  if (ch.id === 'heart') card.classList.add('card-heart');
   card.type = 'button';
   card.dataset.id = ch.id;
   card.style.setProperty('--card-color', ch.color);
+  card.style.gridArea = ch.id;
   card.innerHTML = `<img src="${charImg(ch.id)}" alt="${ch.name}">`;
   card.addEventListener('click', () => selectCharacter(ch, card));
   characterGrid.appendChild(card);

@@ -59,7 +59,7 @@ Os ids usados internamente (podem ser diferentes do nome mostrado na tela):
 
 | Nome exibido | id (nome do arquivo) |
 |---|---|
-| Jokenpô | `heart` |
+| Heart | `heart` |
 | Teddy | `teddy` |
 | Lolly | `lolly` |
 | Zuko | `zuko` |
