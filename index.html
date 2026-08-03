@@ -52,11 +52,39 @@
     <div class="glow-blob glow-pink"></div>
     <div class="glow-blob glow-cyan"></div>
   </div>
-  <h2 class="section-title">ESCOLHA SEU LUTADOR</h2>
-  <div id="character-grid" class="character-grid"></div>
+  <div class="select-mesh"></div>
+  <div class="hud-corners"><i></i><i></i><i></i><i></i></div>
+
+  <div class="select-head">
+    <h2 class="section-title">ESCOLHA SEU LUTADOR</h2>
+    <div class="roster-count"><span id="roster-index">--</span><b> / </b><span id="roster-total">0</span></div>
+  </div>
+
+  <div class="select-layout">
+    <div class="hero-panel">
+      <div class="hero-ring"></div>
+      <div class="hero-figure">
+        <img id="hero-img" class="empty" alt="" src="./assets/img/poster.png">
+      </div>
+      <div class="hero-info">
+        <span class="hero-code" id="hero-code">aguardando</span>
+        <h3 class="hero-name" id="hero-name">SELECIONE</h3>
+        <span class="hero-badge padrao" id="hero-badge">— — —</span>
+      </div>
+    </div>
+
+    <div class="roster-wrap">
+      <div id="character-grid" class="character-grid"></div>
+      <div class="roster-tools">
+        <button id="btn-random" class="btn-hud" type="button">&#8635; SORTEAR</button>
+        <span class="roster-hint"><kbd>&larr;</kbd><kbd>&uarr;</kbd><kbd>&darr;</kbd><kbd>&rarr;</kbd> navegar &middot; <kbd>Enter</kbd> confirmar &middot; <kbd>R</kbd> sortear</span>
+      </div>
+    </div>
+  </div>
+
   <div class="select-bar">
     <div class="select-info">
-      <span id="selected-name">Nenhum personagem selecionado</span>
+      <span id="selected-name">Nenhum lutador selecionado</span>
     </div>
     <button id="btn-confirm" class="btn-glow" disabled>CONFIRMAR</button>
   </div>

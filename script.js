@@ -120,34 +120,132 @@ function goToSelect() {
 const characterGrid = document.getElementById('character-grid');
 const selectedNameEl = document.getElementById('selected-name');
 const btnConfirm = document.getElementById('btn-confirm');
+const selectScreenEl = document.getElementById('screen-select');
+const heroImg = document.getElementById('hero-img');
+const heroName = document.getElementById('hero-name');
+const heroCode = document.getElementById('hero-code');
+const heroBadge = document.getElementById('hero-badge');
+const rosterIndexEl = document.getElementById('roster-index');
+const btnRandom = document.getElementById('btn-random');
 let selectedCharacter = null;
+let focusIndex = -1;
+const cards = [];
 
-CHARACTERS.forEach(ch => {
+document.getElementById('roster-total').textContent = String(CHARACTERS.length).padStart(2, '0');
+
+CHARACTERS.forEach((ch, i) => {
   const card = document.createElement('button');
   card.className = 'char-card-img';
   card.type = 'button';
   card.dataset.id = ch.id;
+  card.dataset.index = i;
   card.style.setProperty('--card-color', ch.color);
-  card.style.aspectRatio = '1 / 1';
-  const namePlate = `<div class="char-name-plate"><span>${ch.name}</span></div>`;
-  card.innerHTML = `<img src="${charImg(ch.id)}" alt="${ch.name}">${namePlate}`;
-  card.addEventListener('click', () => selectCharacter(ch, card));
+  card.style.animationDelay = (i * 28) + 'ms';
+  card.setAttribute('aria-label', ch.name);
+  card.innerHTML =
+    `<img src="${charImg(ch.id)}" alt="${ch.name}" loading="lazy">` +
+    (hasCinematic(ch.id) ? '<span class="char-cine" title="especial cinematográfico">&#9733;</span>' : '') +
+    `<div class="char-name-plate"><span>${ch.name}</span></div>`;
+
+  // no PC, passar o mouse já mostra o lutador no painel; sair volta ao escolhido
+  card.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') preview(ch); });
+  card.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') preview(selectedCharacter); });
+  card.addEventListener('focus', () => preview(ch));
+  // toque/clique: 1º escolhe, 2º no mesmo card confirma
+  card.addEventListener('click', () => {
+    if (selectedCharacter && selectedCharacter.id === ch.id) return confirmSelection();
+    selectCharacter(ch, card);
+  });
+  cards.push(card);
   characterGrid.appendChild(card);
 });
 
+/** Atualiza só o painel de destaque, sem mexer na escolha. */
+function preview(ch) {
+  if (!ch) {
+    heroImg.classList.add('empty');
+    heroImg.src = './assets/img/poster.png';
+    heroName.textContent = 'SELECIONE';
+    heroCode.textContent = 'aguardando';
+    heroBadge.textContent = '— — —';
+    heroBadge.className = 'hero-badge padrao';
+    rosterIndexEl.textContent = '--';
+    selectScreenEl.style.removeProperty('--sel');
+    return;
+  }
+  heroImg.classList.remove('empty');
+  if (!heroImg.src.endsWith(ch.id + '.png')) {
+    heroImg.src = charImg(ch.id);
+    heroImg.style.animation = 'none';
+    void heroImg.offsetWidth;
+    heroImg.style.animation = '';
+  }
+  heroName.textContent = ch.name.toUpperCase();
+  heroCode.textContent = 'unid. ' + ch.id;
+  const cine = hasCinematic(ch.id);
+  heroBadge.textContent = cine ? '\u2605 especial cinematográfico' : 'especial padrão';
+  heroBadge.className = 'hero-badge' + (cine ? '' : ' padrao');
+  rosterIndexEl.textContent = String(CHARACTERS.indexOf(ch) + 1).padStart(2, '0');
+  selectScreenEl.style.setProperty('--sel', ch.color);
+}
+
 function selectCharacter(ch, card) {
-  document.querySelectorAll('.char-card-img').forEach(c => c.classList.remove('selected'));
+  cards.forEach(c => { c.classList.remove('selected'); c.removeAttribute('aria-pressed'); });
   card.classList.add('selected');
+  card.setAttribute('aria-pressed', 'true');
   selectedCharacter = ch;
-  selectedNameEl.textContent = `Selecionado: ${ch.name}`;
+  focusIndex = CHARACTERS.indexOf(ch);
+  preview(ch);
+  selectedNameEl.innerHTML = 'lutador: <b>' + ch.name.toUpperCase() + '</b>';
   btnConfirm.disabled = false;
+  selectScreenEl.classList.add('ready');
+  card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   SFX.select();
 }
 
-btnConfirm.addEventListener('click', () => {
+function confirmSelection() {
   if (!selectedCharacter) return;
   SFX.confirm();
   startGame(selectedCharacter);
+}
+
+btnConfirm.addEventListener('click', confirmSelection);
+
+/** Sorteia um lutador diferente do atual. */
+function randomPick() {
+  let i = Math.floor(Math.random() * CHARACTERS.length);
+  if (CHARACTERS.length > 1 && selectedCharacter && CHARACTERS[i].id === selectedCharacter.id) {
+    i = (i + 1) % CHARACTERS.length;
+  }
+  selectCharacter(CHARACTERS[i], cards[i]);
+}
+btnRandom.addEventListener('click', randomPick);
+
+/** Navegação por teclado no roster (colunas lidas do grid renderizado). */
+function colunas() {
+  const cs = getComputedStyle(characterGrid).gridTemplateColumns;
+  return Math.max(1, cs.split(' ').filter(Boolean).length);
+}
+
+document.addEventListener('keydown', (e) => {
+  if (!selectScreenEl.classList.contains('active')) return;
+  const n = CHARACTERS.length;
+  const col = colunas();
+  let alvo = focusIndex;
+
+  switch (e.key) {
+    case 'ArrowRight': alvo = focusIndex < 0 ? 0 : (focusIndex + 1) % n; break;
+    case 'ArrowLeft':  alvo = focusIndex < 0 ? 0 : (focusIndex - 1 + n) % n; break;
+    case 'ArrowDown':  alvo = focusIndex < 0 ? 0 : Math.min(n - 1, focusIndex + col); break;
+    case 'ArrowUp':    alvo = focusIndex < 0 ? 0 : Math.max(0, focusIndex - col); break;
+    case 'Enter': case ' ':
+      if (selectedCharacter) { e.preventDefault(); confirmSelection(); }
+      return;
+    case 'r': case 'R': randomPick(); return;
+    default: return;
+  }
+  e.preventDefault();
+  selectCharacter(CHARACTERS[alvo], cards[alvo]);
 });
 
 // --------------------------------------------------------------------------

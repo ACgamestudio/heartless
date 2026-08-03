@@ -22,4 +22,9 @@ const CHARACTERS = [
   { id: 'spark',  name: 'Spark',   color: '#ff8c1a', w: 287, h: 297 },
 ];
 
+// Personagens com vídeo de especial próprio em assets/videos/specials/.
+// Os demais usam o especial padrão (sem cinemática).
+const CINEMATIC = ['heart', 'teddy', 'lolly', 'toxin', 'blitz'];
+const hasCinematic = (id) => CINEMATIC.indexOf(id) >= 0;
+
 const charImg = (id) => `./assets/img/characters/${id}.png`;
