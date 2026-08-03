@@ -161,6 +161,7 @@ const specialVideoEl = document.getElementById('special-video');
 // --------------------------------------------------------------------------
 function playClip(videoEl, overlayEl, src, maxDurationMs, callback) {
   let done = false;
+  let safety;
   const finish = () => {
     if (done) return;
     done = true;
@@ -169,6 +170,7 @@ function playClip(videoEl, overlayEl, src, maxDurationMs, callback) {
     videoEl.pause();
     videoEl.onended = null;
     videoEl.onerror = null;
+    videoEl.onloadedmetadata = null;
     if (callback) callback();
   };
   const finishWithError = () => {
@@ -176,13 +178,29 @@ function playClip(videoEl, overlayEl, src, maxDurationMs, callback) {
     finish();
   };
 
-  const safety = setTimeout(finish, maxDurationMs);
+  const armSafety = (ms) => {
+    clearTimeout(safety);
+    safety = setTimeout(finish, ms);
+  };
+
+  // Trava de segurança inicial: se o vídeo nem carregar, o jogo segue em
+  // frente depois desse tempo em vez de travar esperando um arquivo ausente.
+  armSafety(maxDurationMs);
 
   videoEl.src = src;
   videoEl.currentTime = 0;
   videoEl.muted = false;
   if (overlayEl) overlayEl.classList.remove('hidden');
   else videoEl.style.display = 'block';
+
+  // Assim que soubermos a duração real do clipe, a trava passa a valer a
+  // duração inteira do vídeo (+ folga) em vez do valor inicial curto —
+  // então o vídeo sempre toca até o fim, e a trava só é um fallback real.
+  videoEl.onloadedmetadata = () => {
+    if (isFinite(videoEl.duration) && videoEl.duration > 0) {
+      armSafety(videoEl.duration * 1000 + 800);
+    }
+  };
 
   const playPromise = videoEl.play();
   if (playPromise) playPromise.catch(finishWithError);
