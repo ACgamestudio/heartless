@@ -99,13 +99,19 @@
   </div>
   <div class="arena-lines"></div>
 
-  <p class="game-subtitle">NOCAUTEIE O RIVAL!</p>
+  <p class="game-subtitle">Nocauteie o rival</p>
 
   <div class="fight-hud">
     <div class="fighter-block">
-      <span id="player-name" class="fighter-name">Você</span>
-      <div class="hp-bar-outer"><div id="player-hp-fill" class="hp-bar-fill hp-fill-player"></div></div>
-      <div class="meter-bar-outer"><div id="player-meter-fill" class="meter-bar-fill"></div></div>
+      <div class="fighter-row">
+        <span id="player-name" class="fighter-name">Você</span>
+        <span id="player-hp-num" class="hp-num">100</span>
+      </div>
+      <div id="player-hp-outer" class="hp-bar-outer">
+        <div id="player-hp-ghost" class="hp-bar-ghost"></div>
+        <div id="player-hp-fill" class="hp-bar-fill hp-fill-player"></div>
+      </div>
+      <div id="player-meter-outer" class="meter-bar-outer"><div id="player-meter-fill" class="meter-bar-fill"></div></div>
     </div>
 
     <div class="hud-vs">
@@ -116,9 +122,15 @@
     </div>
 
     <div class="fighter-block fighter-block-rival">
-      <span id="rival-name" class="fighter-name">Rival</span>
-      <div class="hp-bar-outer"><div id="rival-hp-fill" class="hp-bar-fill hp-fill-rival"></div></div>
-      <div class="meter-bar-outer"><div id="rival-meter-fill" class="meter-bar-fill"></div></div>
+      <div class="fighter-row">
+        <span id="rival-name" class="fighter-name">Rival</span>
+        <span id="rival-hp-num" class="hp-num">100</span>
+      </div>
+      <div id="rival-hp-outer" class="hp-bar-outer">
+        <div id="rival-hp-ghost" class="hp-bar-ghost"></div>
+        <div id="rival-hp-fill" class="hp-bar-fill hp-fill-rival"></div>
+      </div>
+      <div id="rival-meter-outer" class="meter-bar-outer"><div id="rival-meter-fill" class="meter-bar-fill"></div></div>
     </div>
   </div>
 
@@ -127,6 +139,8 @@
       <img id="player-portrait" class="portrait" alt="jogador">
       <span id="player-dmg" class="dmg-popup"></span>
     </div>
+    <div id="combo" class="combo"></div>
+    <div id="clash" class="clash"></div>
     <div class="portrait-stage stage-rival">
       <img id="rival-portrait" class="portrait" alt="rival">
       <span id="rival-dmg" class="dmg-popup"></span>
@@ -138,13 +152,13 @@
   </div>
 
   <div class="choices">
-    <button class="choice-btn" data-choice="punch">👊<span>Soco</span></button>
-    <button class="choice-btn" data-choice="kick">🦵<span>Chute</span></button>
-    <button class="choice-btn" data-choice="block">🛡️<span>Bloqueio</span></button>
-    <button id="btn-special" class="choice-btn choice-special" data-choice="special" disabled>💥<span>Especial</span></button>
+    <button class="choice-btn" data-choice="punch"><span class="key">1</span>&#128074;<span>Soco</span></button>
+    <button class="choice-btn" data-choice="kick"><span class="key">2</span>&#129466;<span>Chute</span></button>
+    <button class="choice-btn" data-choice="block"><span class="key">3</span>&#128737;&#65039;<span>Bloqueio</span></button>
+    <button id="btn-special" class="choice-btn choice-special" data-choice="special" disabled><span class="key">4</span>&#128165;<span>Especial</span></button>
   </div>
 
-  <button id="btn-menu" class="btn-ghost">← Trocar lutador</button>
+  <button id="btn-menu" class="btn-ghost">&larr; Trocar lutador</button>
 </section>
 
 <!-- ===================== OVERLAY: VÍDEO DE ESPECIAL ===================== -->

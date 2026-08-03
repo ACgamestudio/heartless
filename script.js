@@ -262,6 +262,16 @@ const playerMeterFill = document.getElementById('player-meter-fill');
 const rivalMeterFill = document.getElementById('rival-meter-fill');
 const playerDmgEl = document.getElementById('player-dmg');
 const rivalDmgEl = document.getElementById('rival-dmg');
+const playerHpGhost = document.getElementById('player-hp-ghost');
+const rivalHpGhost = document.getElementById('rival-hp-ghost');
+const playerHpNum = document.getElementById('player-hp-num');
+const rivalHpNum = document.getElementById('rival-hp-num');
+const playerHpOuter = document.getElementById('player-hp-outer');
+const rivalHpOuter = document.getElementById('rival-hp-outer');
+const playerMeterOuter = document.getElementById('player-meter-outer');
+const rivalMeterOuter = document.getElementById('rival-meter-outer');
+const clashEl = document.getElementById('clash');
+const comboEl = document.getElementById('combo');
 const roundResult = document.getElementById('round-result');
 const btnSpecial = document.getElementById('btn-special');
 const btnMenu = document.getElementById('btn-menu');
@@ -340,6 +350,7 @@ let playerMeter = 0;
 let rivalMeter = 0;
 let gameOver = false;
 let locked = false;
+let combo = 0;
 
 function pickRival(excludeId) {
   const pool = CHARACTERS.filter(c => c.id !== excludeId);
@@ -358,6 +369,13 @@ function startGame(chosen) {
   gameOver = false;
   locked = false;
 
+  combo = 0;
+  comboEl.classList.remove('on');
+  gameScreenEl.classList.remove('critical');
+  // a arena assume as cores dos dois lutadores
+  gameScreenEl.style.setProperty('--p', player.color);
+  gameScreenEl.style.setProperty('--r', rival.color);
+
   playerPortrait.src = charImg(player.id);
   rivalPortrait.src = charImg(rival.id);
   playerNameEl.textContent = player.name;
@@ -374,11 +392,59 @@ function startGame(chosen) {
 }
 
 function updateBars() {
-  playerHpFill.style.width = clamp(playerHP, 0, MAX_HP) + '%';
-  rivalHpFill.style.width = clamp(rivalHP, 0, MAX_HP) + '%';
-  playerMeterFill.style.width = clamp(playerMeter, 0, 100) + '%';
-  rivalMeterFill.style.width = clamp(rivalMeter, 0, 100) + '%';
+  const pHp = clamp(playerHP, 0, MAX_HP);
+  const rHp = clamp(rivalHP, 0, MAX_HP);
+  const pMe = clamp(playerMeter, 0, 100);
+  const rMe = clamp(rivalMeter, 0, 100);
+
+  // a barra branca (fantasma) tem delay no CSS: ela fica atrás mostrando
+  // por um instante a vida que existia antes do golpe — o "chip damage"
+  // clássico de jogo de luta. Não precisa guardar o valor anterior aqui.
+  playerHpFill.style.width = pHp + '%';
+  rivalHpFill.style.width = rHp + '%';
+  playerHpGhost.style.width = pHp + '%';
+  rivalHpGhost.style.width = rHp + '%';
+
+  playerHpNum.textContent = pHp;
+  rivalHpNum.textContent = rHp;
+  playerHpOuter.classList.toggle('low', pHp <= 25 && pHp > 0);
+  rivalHpOuter.classList.toggle('low', rHp <= 25 && rHp > 0);
+  gameScreenEl.classList.toggle('critical', pHp <= 25 && pHp > 0 && !gameOver);
+
+  playerMeterFill.style.width = pMe + '%';
+  rivalMeterFill.style.width = rMe + '%';
+  playerMeterOuter.classList.toggle('full', pMe >= 100);
+  rivalMeterOuter.classList.toggle('full', rMe >= 100);
+
   btnSpecial.disabled = playerMeter < 100 || gameOver || locked;
+}
+
+/** Estouro visual no centro da arena de acordo com o resultado do turno. */
+function flashClash(pDmg, cDmg) {
+  let texto, classe;
+  if (pDmg > 0 && cDmg > 0) { texto = 'CHOQUE!'; classe = 'crit'; }
+  else if (cDmg >= 14)      { texto = 'CRÍTICO!'; classe = 'crit'; }
+  else if (cDmg > 0)        { texto = 'ACERTOU!'; classe = ''; }
+  else if (pDmg > 0)        { texto = 'TOMOU DANO'; classe = ''; }
+  else                      { texto = 'BLOQUEADO'; classe = 'block'; }
+
+  clashEl.className = 'clash ' + classe;
+  clashEl.textContent = texto;
+  void clashEl.offsetWidth;
+  clashEl.classList.add('go');
+}
+
+/** Sequência de turnos em que o jogador acertou sem tomar dano. */
+function updateCombo(pDmg, cDmg) {
+  if (cDmg > 0 && pDmg === 0) combo += 1; else combo = 0;
+  if (combo >= 2) {
+    comboEl.textContent = combo + ' EM SEQUÊNCIA';
+    comboEl.classList.remove('on');
+    void comboEl.offsetWidth;
+    comboEl.classList.add('on');
+  } else {
+    comboEl.classList.remove('on');
+  }
 }
 
 // --------------------------------------------------------------------------
@@ -470,6 +536,21 @@ document.querySelectorAll('.choice-btn').forEach(btn => {
   });
 });
 
+const TECLAS = { '1': 'punch', '2': 'kick', '3': 'block', '4': 'special',
+                 a: 'punch', s: 'kick', d: 'block', ' ': 'special' };
+
+document.addEventListener('keydown', (e) => {
+  if (!gameScreenEl.classList.contains('active')) return;
+  const golpe = TECLAS[e.key] || TECLAS[String(e.key).toLowerCase()];
+  if (!golpe) return;
+  e.preventDefault();
+  if (gameOver || locked) return;
+  if (golpe === 'special' && playerMeter < 100) return;
+  const btn = document.querySelector(`.choice-btn[data-choice="${golpe}"]`);
+  if (btn) { btn.style.transform = 'translateY(-1px) scale(.97)'; setTimeout(() => btn.style.removeProperty('transform'), 130); }
+  playTurn(golpe);
+});
+
 function playTurn(playerMove) {
   locked = true;
   SFX[playerMove]();
@@ -498,9 +579,17 @@ function resolveAndApply(playerMove, rivalMove) {
 
   updateBars();
   roundResult.textContent = text;
+  roundResult.classList.remove('flash');
+  void roundResult.offsetWidth;
+  roundResult.classList.add('flash');
+
+  flashClash(pDmg, cDmg);
+  updateCombo(pDmg, cDmg);
 
   if (pDmg > 0) { showDamage(playerDmgEl, pDmg); hit(playerPortrait); SFX.hit(); }
   if (cDmg > 0) { showDamage(rivalDmgEl, cDmg); hit(rivalPortrait); SFX.hit(); }
+  if (playerMove === 'block' && pDmg === 0) guard(playerPortrait);
+  if (rivalMove === 'block' && cDmg === 0) guard(rivalPortrait);
   if (pDmg > 0 || cDmg > 0) shakeScreen();
 
   setTimeout(() => {
@@ -525,8 +614,15 @@ function showDamage(el, amount) {
 }
 
 function hit(el) {
+  el.classList.remove('hit');
+  void el.offsetWidth;
   el.classList.add('hit');
-  setTimeout(() => el.classList.remove('hit'), 200);
+  setTimeout(() => el.classList.remove('hit'), 300);
+}
+
+function guard(el) {
+  el.classList.add('guard');
+  setTimeout(() => el.classList.remove('guard'), 320);
 }
 
 function shakeScreen() {
