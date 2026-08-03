@@ -101,64 +101,35 @@ const SoundEngine = (() => {
     },
   };
 
-  // -------------------- música de fundo (gerada, em loop) --------------------
+  // -------------------- música de fundo (arquivo real, em loop) --------------------
   const BGM = (() => {
     let playing = false;
-    let timeoutId = null;
+    let audioEl = null;
 
-    // escala menor (Lá menor) — soa tensa/heróica, combina com o clima do jogo
-    const scale = [220.0, 246.94, 261.63, 293.66, 329.63, 349.23, 392.0];
-    const melodyPattern = [0, 2, 4, 2, 0, 3, 4, 5, 4, 2, 0, -1, 2, 4, 5, 4];
-    const bassPattern = [0, 0, 3, 3];
-
-    function note(freq, t, dur, gain, type) {
-      const c = ensureCtx();
-      if (!c) return;
-      const osc = c.createOscillator();
-      const g = c.createGain();
-      osc.type = type;
-      osc.frequency.value = freq;
-      const t0 = c.currentTime + t;
-      g.gain.setValueAtTime(0.0001, t0);
-      g.gain.exponentialRampToValueAtTime(gain, t0 + 0.02);
-      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-      osc.connect(g).connect(c.destination);
-      osc.start(t0);
-      osc.stop(t0 + dur + 0.05);
-    }
-
-    const BEAT = 0.28;
-    const BARS = melodyPattern.length;
-
-    function scheduleBar() {
-      melodyPattern.forEach((deg, i) => {
-        if (deg === -1) return; // pausa
-        const freq = scale[((deg % scale.length) + scale.length) % scale.length] * 2;
-        note(freq, i * BEAT, BEAT * 0.85, 0.05, 'triangle');
-      });
-      bassPattern.forEach((deg, i) => {
-        const freq = scale[deg % scale.length] / 2;
-        note(freq, i * BEAT * 4, BEAT * 3.6, 0.07, 'sine');
-      });
-    }
-
-    function loop() {
-      if (!playing) return;
-      scheduleBar();
-      timeoutId = setTimeout(loop, BARS * BEAT * 1000);
+    function ensureAudio() {
+      if (!audioEl) {
+        audioEl = new Audio('./assets/audio/arena.mp3');
+        audioEl.loop = true;
+        audioEl.volume = 0.45;
+        audioEl.preload = 'auto';
+      }
+      return audioEl;
     }
 
     return {
       start() {
         if (playing) return;
-        const c = ensureCtx();
-        if (!c) return;
+        const a = ensureAudio();
+        const p = a.play();
+        if (p && p.catch) p.catch(() => { /* navegador bloqueou autoplay, tenta de novo no próximo gesto */ });
         playing = true;
-        loop();
       },
       stop() {
         playing = false;
-        if (timeoutId) clearTimeout(timeoutId);
+        if (audioEl) {
+          audioEl.pause();
+          audioEl.currentTime = 0;
+        }
       },
       get isPlaying() { return playing; },
     };

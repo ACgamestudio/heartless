@@ -29,6 +29,8 @@ async function enterImmersiveMode() {
   try {
     if (el.requestFullscreen) await el.requestFullscreen();
     else if (el.webkitRequestFullscreen) await el.webkitRequestFullscreen();
+    else if (el.mozRequestFullScreen) await el.mozRequestFullScreen();
+    else if (el.msRequestFullscreen) await el.msRequestFullscreen();
   } catch (e) { /* navegador bloqueou tela cheia, segue sem ela */ }
 
   try {
@@ -57,6 +59,7 @@ function goToVideo(key, screenEl, onFinish) {
   const finish = () => {
     if (finished) return;
     finished = true;
+    video.pause();
     onFinish();
   };
 
@@ -102,7 +105,9 @@ CHARACTERS.forEach(ch => {
   card.dataset.id = ch.id;
   card.style.setProperty('--card-color', ch.color);
   card.style.gridArea = ch.id;
-  card.innerHTML = `<img src="${charImg(ch.id)}" alt="${ch.name}">`;
+  card.style.aspectRatio = ch.id === 'heart' ? `${ch.w} / ${ch.h}` : '1 / 1';
+  const namePlate = ch.id === 'heart' ? '' : `<div class="char-name-plate"><span>${ch.name}</span></div>`;
+  card.innerHTML = `<img src="${charImg(ch.id)}" alt="${ch.name}">${namePlate}`;
   card.addEventListener('click', () => selectCharacter(ch, card));
   characterGrid.appendChild(card);
 });
