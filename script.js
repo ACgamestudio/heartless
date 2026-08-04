@@ -416,6 +416,12 @@ function updateBars() {
   playerMeterOuter.classList.toggle('full', pMe >= 100);
   rivalMeterOuter.classList.toggle('full', rMe >= 100);
 
+  // o próprio botão de especial é o medidor: a altura do preenchimento e o
+  // rótulo em % vêm direto do meter do jogador.
+  btnSpecial.style.setProperty('--charge', pMe + '%');
+  const chg = btnSpecial.querySelector('.chg');
+  if (chg) chg.textContent = pMe >= 100 ? 'PRONTO' : pMe + '%';
+  btnSpecial.classList.toggle('armed', pMe >= 100);
   btnSpecial.disabled = playerMeter < 100 || gameOver || locked;
 }
 
