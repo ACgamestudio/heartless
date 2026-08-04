@@ -116,3 +116,96 @@ assets/
 - **Sons**: edite `sound.js` (frequências, duração, tipo de onda).
 - **Cards de personagem**: se algum card precisar de ajuste, troque o PNG
   correspondente em `assets/img/characters/` (mesmo nome de arquivo).
+
+---
+
+## Sistema de Elementos
+
+Cada lutador pertence a um dos seis elementos. O elemento define quatro coisas: contra quem é forte, contra quem é fraco, uma passiva permanente e a ultimate que substitui o Especial genérico.
+
+Toda a configuração vive em `elements.js`. Os números de balanceamento estão no objeto `BALANCE`, no topo do arquivo — dá para ajustar o jogo inteiro sem tocar em `script.js`.
+
+### Ciclo de afinidade
+
+```
+❤️ Coração → 🌑 Sombra → ☠️ Toxina → ⚡ Trovão → ❄️ Gelo → 🔥 Chama → ❤️ Coração
+```
+
+Cada elemento causa **+25%** de dano contra o seguinte e **−20%** contra o anterior. O card e o HUD mostram a relação, então ninguém precisa decorar.
+
+### Elenco
+
+| Elemento | Lutadores | Passiva | Ultimate |
+|---|---|---|---|
+| ❤️ Coração | Heart, Lolly, Teddy | Pulso Vital — ao perder a troca, cura 3% da vida | Onda Afetiva — 20 de dano em área e cura 11 |
+| 🔥 Chama | Kai, Razor, Spark | Combustão — cada acerto seguido soma +3 de dano, até +9 | Erupção — 26 de dano e queima 4 por 2 turnos |
+| ⚡ Trovão | Blitz, Nya | Reflexo — metade do dano em choque de golpes iguais | Descarga — 24 de dano e rouba 25% do medidor |
+| ❄️ Gelo | Zuko, Yuki | Frio Cortante — bloqueio drena 18 do medidor, ganha 6 e apara 40% do dano mesmo quebrado | Nevasca — 25 de dano e trava o Especial do rival |
+| ☠️ Toxina | Toxin, Void | Corrosão — todo acerto envenena; 2 por dose, perde uma dose por turno | Miasma — 18 de dano e aplica as 3 doses de uma vez |
+| 🌑 Sombra | Shadow, Miyu, King, Star | Espelho — anula o primeiro dano da partida e ganha outro escudo abaixo de 30 de vida | Eclipse — 25 de dano e revela o próximo golpe do rival |
+
+### Por que nenhuma passiva usa sorte
+
+Jokenpô é um jogo de leitura. Se um número aleatório decide o turno, ganhar não ensina nada e perder parece roubo. Toda passiva acima dispara por uma condição que o jogador controla: acertar em sequência, perder a troca, bloquear, entrar em vida crítica. "Chance de esquiva" virou escudo determinístico — o jogador sabe que tem e escolhe quando gastar.
+
+### Ordem de resolução do turno
+
+1. Veneno e queimadura das rodadas anteriores cobram o dano
+2. `resolveTurn()` calcula o resultado cru do jokenpô
+3. Ultimate substitui o dano genérico do Especial, se houver
+4. Multiplicador de afinidade
+5. Passivas ofensivas (Combustão)
+6. Passivas defensivas (Reflexo, guarda de Gelo, Espelho)
+7. Passivas de reação (Pulso Vital, Frio Cortante, Corrosão)
+8. Efeitos da ultimate (queimadura, congelamento, roubo de medidor, revelação)
+9. Atualiza sequência da Chama e checa o segundo Espelho
+
+Doses novas aplicadas no turno só doem no turno seguinte — o jogador vê o efeito chegando antes de sentir.
+
+### Balanceamento
+
+Rodei 3.600 duelos automatizados (todos os 240 confrontos possíveis, 15 partidas cada). Taxa de vitória por elemento:
+
+| Elemento | Vitórias |
+|---|---|
+| ❤️ Coração | 55,1% |
+| ⚡ Trovão | 51,3% |
+| 🔥 Chama | 50,6% |
+| ❄️ Gelo | 45,9% |
+| ☠️ Toxina | 45,1% |
+| 🌑 Sombra | 44,6% |
+
+Duração média de 15 turnos, nenhuma partida travada. A simulação usa CPU aleatória nos dois lados, então ela mede o piso mecânico, não o teto de habilidade: Sombra, Chama e Gelo dependem de leitura e ganham em jogo real acima do que aparece aqui. Buscar 50% exato nessa tabela seria otimizar para um robô que joga dado.
+
+
+---
+
+## Feedback visual do turno
+
+O resultado do turno não é mais só texto. Ao resolver, os **mesmos glifos SVG dos botões de golpe** entram voando — o do jogador pela esquerda, o do rival pela direita — colidem no centro e o desfecho é lido pela animação:
+
+| Situação | O que aparece |
+|---|---|
+| Você venceu o turno | seu glifo atravessa o centro e cresce; o do rival é rebatido, gira e se desfaz em blur |
+| Rival venceu | o inverso |
+| Troca de golpes | os dois brilham no impacto e recuam iguais |
+| Ninguém tomou dano | encostam de leve e somem, com anel tracejado ciano |
+| Especial ou dano ≥ 18 | estouro reforçado, com raios em cruz dupla |
+
+Cada glifo herda o `--tint` do próprio golpe, que já existia no CSS: soco laranja, chute rosa, bloqueio ciano, especial âmbar. Nenhuma arte nova foi criada — o `MOVE_GLYPH` lê os SVG direto dos botões no carregamento, então mudar o ícone de um golpe muda o choque automaticamente.
+
+O texto de veredito ("CRÍTICO!", "BLOQUEADO") desceu para 66% da altura para não colidir com os glifos.
+
+## Ritmo da cinemática do especial
+
+Botão **🎬 CINEMÁTICA** na barra inferior da arena, com três estados que ciclam a cada clique e ficam salvos no navegador (`localStorage`, chave `hlowo-cine`):
+
+| Estado | Comportamento |
+|---|---|
+| COMPLETA | velocidade normal |
+| RÁPIDA 1,75× | `playbackRate = 1.75` |
+| DESLIGADA | o vídeo nem abre; o turno resolve na hora |
+
+Durante a cinemática, dá para pular de quatro formas: botão **Pular ▶**, clique ou toque em qualquer lugar da tela, `Esc` ou `Enter`. Um aviso discreto aparece por 2 segundos na primeira vez e some sozinho.
+
+A trava de segurança do `playClip` continua valendo — se o arquivo de vídeo não existir, o jogo segue em frente sem travar.
