@@ -1,7 +1,7 @@
 # Heart Less OwO Jokenpô
 
 Jogo de luta (fighting game) com o elenco original de **Heart Less OwO** (16
-personagens: Jokenpô, Teddy, Lolly, Zuko, Miyu, Razor, Shadow, Blitz, Toxin,
+personagens: Heart, Teddy, Lolly, Zuko, Miyu, Razor, Shadow, Blitz, Toxin,
 Nya, Yuki, Star, Void, King, Kai e Spark). Nenhum personagem, imagem, som ou
 vídeo do Dragon Ball é usado — todo o visual vem da sua própria arte, e os
 sons são gerados por código (Web Audio API), sem depender de nenhum arquivo
