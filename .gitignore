@@ -1,0 +1,19 @@
+# Originais pesados dos vídeos: ficam só na sua máquina.
+# Se subirem, o repositório guarda as duas versões pra sempre
+# (o Git nunca esquece um arquivo commitado) e a compressão
+# deixa de ter efeito no tamanho do clone.
+assets/videos-originais/
+
+# lixo de sistema
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# editores
+.vscode/
+*.code-workspace
+
+# temporários de encode
+*.tmp
+*.log
+ffmpeg2pass-*
