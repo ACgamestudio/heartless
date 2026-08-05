@@ -32,7 +32,9 @@ const StageFX = {
   video: null,
   veu: null,
   atual: null,
-  travadas: 0,        // quantas vezes o vídeo engasgou nesta sessão
+  travadas: 0,        // engasgos REAIS nesta sessão (não conta buffer inicial)
+  jaTocou: false,     // o vídeo já começou a tocar pelo menos uma vez?
+  _timerTravou: null,
   desligada: false,   // desliga sozinho em aparelho que não dá conta
 
   init() {
@@ -52,6 +54,7 @@ const StageFX = {
           radial-gradient(120% 80% at 50% 15%,transparent,rgba(9,5,15,.55) 70%),
           linear-gradient(180deg,rgba(9,5,15,.72),rgba(9,5,15,.5) 45%,rgba(9,5,15,.88))}
       #screen-game.com-arena .arena-lines{opacity:.35}
+      #screen-game.com-arena .glow-bg{opacity:.22}
       #screen-game.com-arena{background:#09050F}
       .btn-arena{position:absolute;top:10px;right:12px;z-index:1400;
         font-family:'Rubik',sans-serif;font-weight:700;font-size:10px;letter-spacing:.12em;
@@ -76,29 +79,53 @@ const StageFX = {
     tela.prepend(this.veu);
     tela.prepend(this.video);
 
-    // Se o vídeo de fundo engasgar duas vezes, desiste dele nesta sessão.
-    // Aparelho fraco decodificando dois vídeos ao mesmo tempo (arena + clipe
-    // do especial) é a receita certa de travamento.
-    this.video.addEventListener('waiting', () => {
-      this.travadas++;
-      if (this.travadas >= 2) {
-        console.warn('[arena] fundo engasgando, desligando nesta sessão');
-        this.desligada = true;
-        this.esconder();
-      }
+    // Detecção de engasgo — versão que não dá falso positivo.
+    //
+    // O evento 'waiting' dispara em duas situações COMPLETAMENTE normais:
+    // enquanto o vídeo enche o buffer no início, e a cada volta do loop.
+    // Contar isso como travamento desligava a arena logo na primeira luta.
+    //
+    // Agora só conta como engasgo de verdade quando: (a) o vídeo já estava
+    // tocando, e (b) ficou parado esperando por mais de 1,8s de fato.
+    this.video.addEventListener('playing', () => {
+      this.jaTocou = true;
+      clearTimeout(this._timerTravou);
+      this._timerTravou = null;
     });
-    this.video.addEventListener('error', () => this.esconder());
+
+    this.video.addEventListener('waiting', () => {
+      if (!this.jaTocou) return;             // ainda enchendo buffer: normal
+      clearTimeout(this._timerTravou);
+      this._timerTravou = setTimeout(() => {
+        this.travadas++;
+        console.warn('[arena] travou de verdade (' + this.travadas + '/3)');
+        if (this.travadas >= 3) {
+          console.warn('[arena] aparelho não dá conta do fundo, desligando nesta sessão');
+          this.desligada = true;
+          this.marcarEstado('off (travava)');
+          this.esconder();
+        }
+      }, 1800);
+    });
+    this.video.addEventListener('error', () => {
+      const e = this.video.error;
+      console.warn('[arena] falhou:', this.video.currentSrc || this.video.src,
+        e ? 'código ' + e.code : '',
+        (e && e.code === 4) ? '→ o arquivo provavelmente não existe nesse caminho' : '');
+      this.marcarEstado('sem vídeo');
+      this.esconder();
+    });
 
     const botao = document.createElement('button');
     botao.className = 'btn-arena';
     botao.type = 'button';
-    botao.textContent = this.desligada ? 'arena: off' : 'arena: on';
+    botao.textContent = this.desligada ? 'arena: off' : (this._estado || 'arena: ...').replace('arena: ','arena: ');
+    if (!this.desligada) botao.textContent = 'arena: ...';
     botao.addEventListener('click', () => {
       this.desligada = !this.desligada;
       localStorage.setItem('hl-arena', this.desligada ? 'off' : 'on');
-      botao.textContent = this.desligada ? 'arena: off' : 'arena: on';
-      if (this.desligada) this.esconder();
-      else if (this.atual) { const a = this.atual; this.atual = null; this.mostrar(a); }
+      if (this.desligada) { this.marcarEstado('off'); this.esconder(); }
+      else if (this.ultimaChave) { this.atual = null; this.mostrar(this.ultimaChave); }
     });
     tela.appendChild(botao);
   },
@@ -107,24 +134,54 @@ const StageFX = {
   mostrar(chave) {
     this.init();
     if (!this.video || this.desligada || !chave) return this.esconder();
-    if (this.atual === chave) return;
+    this.ultimaChave = chave;
+    if (this.atual === chave) { this.retomar(); return; }
     this.atual = chave;
 
+    this.jaTocou = false;
+    clearTimeout(this._timerTravou);
     this.video.classList.remove('on');
     this.video.src = this.PASTA + chave + '.mp4';
+    this.video.load();
+    this._tentar(0);
+  },
+
+  // O play() é recusado quando a tela do jogo ainda está em display:none.
+  // Em vez de desistir na primeira negativa, tenta nos quadros seguintes.
+  _tentar(n) {
     this.video.play()
       .then(() => {
         this.video.classList.add('on');
-        document.getElementById('screen-game').classList.add('com-arena');
+        const tela = document.getElementById('screen-game');
+        if (tela) tela.classList.add('com-arena');
+        this.marcarEstado('on');
+        console.info('[arena] tocando', this.atual + '.mp4');
       })
-      // arquivo faltando: mantém o fundo em degradê, ninguém vê tela preta
-      .catch(() => this.esconder());
+      .catch(err => {
+        if (n < 4) {
+          requestAnimationFrame(() => setTimeout(() => this._tentar(n + 1), 140));
+          return;
+        }
+        console.warn('[arena] não consegui tocar', this.video.src, err && err.name);
+        this.marcarEstado('sem vídeo');
+        this.esconder();
+      });
+  },
+
+  /** Atualiza o rótulo do botão de canto: on / off / sem vídeo. */
+  marcarEstado(texto) {
+    this._estado = texto;
+    const b = document.querySelector('.btn-arena');
+    if (b) b.textContent = 'arena: ' + texto;
   },
 
   esconder() {
     if (!this.video) return;
+    clearTimeout(this._timerTravou);
+    this._timerTravou = null;
     this.video.classList.remove('on');
     this.video.pause();
+    this.atual = null;   // libera pra poder tentar de novo na próxima luta
     const tela = document.getElementById('screen-game');
     if (tela) tela.classList.remove('com-arena');
   },

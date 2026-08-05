@@ -613,12 +613,6 @@ function startGame(chosen) {
   victoryVideoEl.style.display = 'none';
   victoryVideoEl.removeAttribute('src');
 
-  // a arena é o elemento do RIVAL: você entra no território dele
-  if (typeof StageFX !== 'undefined') {
-    const chaveArena = StageFX.POR_PERSONAGEM[rival.id] || rEl;
-    StageFX.mostrar(chaveArena);
-  }
-
   // chefão do arcade entra com metade do medidor já carregado
   if (typeof Arcade !== 'undefined' && Arcade.ativo && Arcade.chefeAgora) {
     rivalMeter = 60;
@@ -628,6 +622,13 @@ function startGame(chosen) {
 
   showScreen('game');
   BGM.start();
+
+  // A arena entra DEPOIS de showScreen: enquanto a tela está em display:none,
+  // o navegador recusa o play() e a arena era desligada em silêncio.
+  if (typeof StageFX !== 'undefined') {
+    const chaveArena = StageFX.POR_PERSONAGEM[rival.id] || rEl;
+    requestAnimationFrame(() => StageFX.mostrar(chaveArena));
+  }
 }
 
 // O botão de Especial passa a mostrar o nome da ultimate do lutador escolhido.
