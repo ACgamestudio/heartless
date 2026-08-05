@@ -168,12 +168,16 @@ CHARACTERS.forEach((ch, i) => {
   card.type = 'button';
   card.dataset.id = ch.id;
   card.dataset.index = i;
+  const el = elementoDe(ch.id);
   card.style.setProperty('--card-color', ch.color);
+  card.style.setProperty('--el', el.cor);
   card.style.animationDelay = (i * 28) + 'ms';
   card.setAttribute('aria-label', ch.name);
   card.innerHTML =
     `<img src="${charImg(ch.id)}" alt="${ch.name}" loading="lazy">` +
-    (hasCinematic(ch.id) ? '<span class="char-cine" title="especial cinematográfico">&#9733;</span>' : '') +
+    `<span class="el-chip" title="${el.nome} — ${el.passiva.nome}: ${el.passiva.texto}">${el.icone}</span>` +
+    (hasCinematic(ch.id) ? '' : '<span class="char-cine sem" title="especial sem cinemática">&#9679;</span>') +
+    `<div class="el-passiva">${el.passiva.curto}</div>` +
     `<div class="char-name-plate"><span>${ch.name}</span></div>`;
 
   // no PC, passar o mouse já mostra o lutador no painel; sair volta ao escolhido
@@ -200,6 +204,7 @@ function preview(ch) {
     heroBadge.className = 'hero-badge padrao';
     rosterIndexEl.textContent = '--';
     selectScreenEl.style.removeProperty('--sel');
+    if (painelHab) painelHab.style.display = 'none';
     return;
   }
   heroImg.classList.remove('empty');
@@ -211,11 +216,44 @@ function preview(ch) {
   }
   heroName.textContent = ch.name.toUpperCase();
   heroCode.textContent = 'unid. ' + ch.id;
+  pintarHabilidades(ch);
+  // Com os 16 clipes prontos, anunciar "tem cinemática" em todos é ruído.
+  // O selo agora só aparece na exceção: personagem sem vídeo próprio.
   const cine = hasCinematic(ch.id);
-  heroBadge.textContent = cine ? '\u2605 especial cinematográfico' : 'especial padrão';
-  heroBadge.className = 'hero-badge' + (cine ? '' : ' padrao');
+  heroBadge.textContent = cine ? '' : 'especial sem cinemática';
+  heroBadge.className = 'hero-badge padrao';
+  heroBadge.style.display = cine ? 'none' : 'inline-flex';
+  heroBadge.style.marginBottom = cine ? '0' : '6px';
   rosterIndexEl.textContent = String(CHARACTERS.indexOf(ch) + 1).padStart(2, '0');
   selectScreenEl.style.setProperty('--sel', ch.color);
+}
+
+// Monta no painel de destaque: elemento, lema, passiva, ultimate e o ciclo
+// de forte/fraco. É a informação que faz a escolha do lutador virar decisão.
+let painelHab = null;
+function pintarHabilidades(ch) {
+  const chave = chaveElemento(ch.id);
+  const el = ELEMENTS[chave];
+  const forte = ELEMENTS[forteContra(chave)];
+  const fraco = ELEMENTS[fracoContra(chave)];
+
+  if (!painelHab) {
+    painelHab = document.createElement('div');
+    document.querySelector('.hero-info').appendChild(painelHab);
+  }
+  painelHab.style.setProperty('--el', el.cor);
+  painelHab.innerHTML = `
+    <div class="hero-el">${el.icone} ${el.nome}</div>
+    <div class="hero-lema">"${el.lema}"</div>
+    <div class="hero-hab">
+      <div><b>Passiva · ${el.passiva.nome}</b><span>${el.passiva.texto}</span></div>
+      <div><b>Ultimate · ${el.ultimate.nome}</b><span>${el.ultimate.texto}</span></div>
+    </div>
+    <div class="hero-ciclo">
+      <i class="f">forte vs ${forte.icone} ${forte.nome}</i>
+      <i class="w">fraco vs ${fraco.icone} ${fraco.nome}</i>
+    </div>`;
+  painelHab.style.display = 'block';
 }
 
 function selectCharacter(ch, card) {
@@ -429,6 +467,69 @@ let gameOver = false;
 let locked = false;
 let combo = 0;
 
+const NOME_GOLPE = { punch: 'Soco', kick: 'Chute', block: 'Bloqueio', special: 'Ultimate' };
+
+// Todo o CSS do sistema de elementos é injetado daqui. Assim o index.html e o
+// styles.css não precisam ser tocados — um arquivo só pra atualizar.
+(function injetarEstiloElementos() {
+  const css = `
+  .el-chip{position:absolute;top:5px;left:5px;z-index:2;display:flex;align-items:center;
+    justify-content:center;width:20px;height:20px;border-radius:6px;font-size:11px;
+    background:rgba(0,0,0,.72);border:1px solid var(--el);box-shadow:0 0 8px -2px var(--el)}
+  .el-passiva{position:absolute;left:0;right:0;bottom:24%;z-index:2;padding:2px 4px;
+    font-family:'Rubik',sans-serif;font-weight:600;font-size:8px;line-height:1.15;
+    letter-spacing:.02em;text-align:center;color:#fff;text-transform:uppercase;
+    background:linear-gradient(to top,rgba(0,0,0,.9),rgba(0,0,0,.45));
+    text-shadow:0 1px 2px #000}
+  .char-card-img.selected .el-passiva{color:var(--el)}
+
+  .hero-el{display:flex;align-items:center;justify-content:center;gap:6px;margin:2px 0 4px;
+    font-family:'Bungee',sans-serif;font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--el);text-shadow:0 0 10px var(--el)}
+  .hero-lema{font-size:12px;font-style:italic;color:var(--muted);margin-bottom:8px}
+  .hero-hab{display:grid;gap:5px;text-align:left;margin-top:4px}
+  .hero-hab div{border-left:2px solid var(--el);padding:3px 0 3px 8px;
+    background:linear-gradient(90deg,rgba(255,255,255,.05),transparent)}
+  .hero-hab b{display:block;font-family:'Bungee',sans-serif;font-size:9px;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--el)}
+  .hero-hab span{font-size:11px;line-height:1.25;color:var(--text)}
+  .hero-ciclo{display:flex;gap:10px;justify-content:center;margin-top:8px;font-size:10px;
+    letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  .hero-ciclo i{font-style:normal}
+  .hero-ciclo .f{color:#6ee7b7} .hero-ciclo .w{color:#ff9a9d}
+
+  .avisos{display:flex;flex-wrap:wrap;gap:5px;justify-content:center;margin-top:5px}
+  .avisos span{padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600;
+    letter-spacing:.02em;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);
+    color:#fff;animation:aviso-in .28s ease}
+  @keyframes aviso-in{from{opacity:0;transform:translateY(5px) scale(.9)}to{opacity:1}}
+
+  .choice-special.congelado{--tint:#3a7bff}
+  .choice-special.congelado .charge{background:linear-gradient(to top,rgba(58,123,255,.45),rgba(58,123,255,.1))}
+  `;
+  const tag = document.createElement('style');
+  tag.textContent = css;
+  document.head.appendChild(tag);
+})();
+
+// faixa de avisos logo abaixo da narração do turno
+let avisosEl = null;
+function mostrarAvisos(lista) {
+  if (!avisosEl) {
+    avisosEl = document.createElement('div');
+    avisosEl.className = 'avisos';
+    roundResult.parentElement.appendChild(avisosEl);
+  }
+  avisosEl.innerHTML = (lista || []).map(a => `<span>${a}</span>`).join('');
+}
+
+// ---------- estado do sistema de elementos (elements.js) ----------
+let pEl = 'coracao', rEl = 'coracao';
+let pFX = novoEstadoFX(), rFX = novoEstadoFX();
+// Eclipse (Sombra) revela o próximo golpe do rival. Pra isso o golpe precisa
+// ser sorteado ANTES do jogador escolher — fica guardado aqui.
+let golpeRivalPreDefinido = null;
+
 function pickRival(excludeId) {
   const pool = CHARACTERS.filter(c => c.id !== excludeId);
   return pool[Math.floor(Math.random() * pool.length)];
@@ -447,6 +548,12 @@ function startGame(chosen) {
   locked = false;
 
   combo = 0;
+  pEl = chaveElemento(player.id);
+  rEl = chaveElemento(rival.id);
+  pFX = novoEstadoFX();
+  rFX = novoEstadoFX();
+  golpeRivalPreDefinido = null;
+  aplicarUltimateNoBotao();
   comboEl.classList.remove('on');
   gameScreenEl.classList.remove('critical');
   // a arena assume as cores dos dois lutadores
@@ -460,17 +567,31 @@ function startGame(chosen) {
 
   playerPortrait.src = charImg(player.id);
   rivalPortrait.src = charImg(rival.id);
-  playerNameEl.textContent = player.name;
-  rivalNameEl.textContent = rival.name;
+  playerNameEl.textContent = ELEMENTS[pEl].icone + ' ' + player.name;
+  rivalNameEl.textContent = rival.name + ' ' + ELEMENTS[rEl].icone;
 
   updateBars();
-  roundResult.textContent = 'Faça sua jogada!';
+  mostrarAvisos([]);
+  const mult = multiplicadorAfinidade(pEl, rEl);
+  roundResult.textContent = mult > 1
+    ? `${ELEMENTS[pEl].nome} leva vantagem contra ${ELEMENTS[rEl].nome}. Ataque!`
+    : mult < 1
+      ? `${ELEMENTS[pEl].nome} é fraco contra ${ELEMENTS[rEl].nome}. Jogue na defensiva.`
+      : 'Faça sua jogada!';
   overlayEnd.classList.add('hidden');
   victoryVideoEl.style.display = 'none';
   victoryVideoEl.removeAttribute('src');
 
   showScreen('game');
   BGM.start();
+}
+
+// O botão de Especial passa a mostrar o nome da ultimate do lutador escolhido.
+function aplicarUltimateNoBotao() {
+  const ult = ELEMENTS[pEl].ultimate;
+  const lbl = btnSpecial.querySelector('.lbl');
+  if (lbl) lbl.textContent = ult.nome;
+  btnSpecial.title = ult.texto;
 }
 
 function updateBars() {
@@ -502,9 +623,11 @@ function updateBars() {
   // rótulo em % vêm direto do meter do jogador.
   btnSpecial.style.setProperty('--charge', pMe + '%');
   const chg = btnSpecial.querySelector('.chg');
-  if (chg) chg.textContent = pMe >= 100 ? 'PRONTO' : pMe + '%';
-  btnSpecial.classList.toggle('armed', pMe >= 100);
-  btnSpecial.disabled = playerMeter < 100 || gameOver || locked;
+  const congelado = pFX.congelado > 0;
+  if (chg) chg.textContent = congelado ? 'CONGELADO' : (pMe >= 100 ? 'PRONTO' : pMe + '%');
+  btnSpecial.classList.toggle('armed', pMe >= 100 && !congelado);
+  btnSpecial.classList.toggle('congelado', congelado);
+  btnSpecial.disabled = playerMeter < 100 || gameOver || locked || congelado;
 }
 
 /** Estouro visual no centro da arena de acordo com o resultado do turno. */
@@ -540,7 +663,7 @@ function updateCombo(pDmg, cDmg) {
 // estiver cheio.
 // --------------------------------------------------------------------------
 function cpuChoice() {
-  if (rivalMeter >= 100 && Math.random() < 0.55) return 'special';
+  if (rivalMeter >= 100 && rFX.congelado === 0 && Math.random() < 0.55) return 'special';
   const roll = Math.random();
   if (roll < 0.38) return 'punch';
   if (roll < 0.76) return 'kick';
@@ -642,7 +765,10 @@ document.addEventListener('keydown', (e) => {
 function playTurn(playerMove) {
   locked = true;
   SFX[playerMove]();
-  const rivalMove = cpuChoice();
+  // se o Eclipse revelou o golpe, é ELE que tem que sair — senão a revelação mentiria
+  let rivalMove = golpeRivalPreDefinido || cpuChoice();
+  golpeRivalPreDefinido = null;
+  if (rivalMove === 'special' && (rFX.congelado > 0 || rivalMeter < 100)) rivalMove = 'kick';
 
   // Se alguém usou o Especial, toca o clipe daquele personagem antes de
   // aplicar o resultado (se o arquivo ainda não existir, segue direto).
@@ -659,14 +785,61 @@ function playTurn(playerMove) {
 }
 
 function resolveAndApply(playerMove, rivalMove) {
-  const { pDmg, cDmg, pMeterGain, cMeterGain, text } = resolveTurn(playerMove, rivalMove);
+  // guarda se o congelamento já valia ANTES deste turno: assim o efeito
+  // aplicado agora sobrevive pro turno seguinte antes de expirar
+  const congelavaP = pFX.congelado > 0;
+  const congelavaR = rFX.congelado > 0;
 
-  playerHP = clamp(playerHP - pDmg, 0, MAX_HP);
-  rivalHP = clamp(rivalHP - cDmg, 0, MAX_HP);
-  playerMeter = clamp(playerMeter + pMeterGain, 0, 100);
-  rivalMeter = clamp(rivalMeter + cMeterGain, 0, 100);
+  const base = resolveTurn(playerMove, rivalMove);
+
+  // elements.js reescreve o resultado: afinidade, passivas e ultimates
+  const res = aplicarElementos({
+    base, pMove: playerMove, rMove: rivalMove,
+    pEl, rEl, pFX, rFX,
+    pHP: playerHP, rHP: rivalHP, maxHP: MAX_HP,
+    pMeter: playerMeter, rMeter: rivalMeter,
+    pNome: player.name, rNome: rival.name
+  });
+
+  const pDmg = res.pDmg, cDmg = res.cDmg, text = res.text;
+  const avisos = res.avisos.slice();
+
+  playerHP = clamp(playerHP - pDmg + res.pCura, 0, MAX_HP);
+  rivalHP = clamp(rivalHP - cDmg + res.cCura, 0, MAX_HP);
+  playerMeter = clamp(playerMeter + res.pMeterGain, 0, 100);
+  rivalMeter = clamp(rivalMeter + res.cMeterGain, 0, 100);
+
+  // veneno e queimadura cobram no fim do turno
+  const contP = danoContinuo(pFX);
+  const contR = danoContinuo(rFX);
+  if (contP.dano > 0) {
+    playerHP = clamp(playerHP - contP.dano, 0, MAX_HP);
+    avisos.push('você sofre ' + contP.partes.join(' '));
+    showDamage(playerDmgEl, contP.dano);
+  }
+  if (contR.dano > 0) {
+    rivalHP = clamp(rivalHP - contR.dano, 0, MAX_HP);
+    avisos.push(rival.name + ' sofre ' + contR.partes.join(' '));
+    showDamage(rivalDmgEl, contR.dano);
+  }
+
+  // Sombra ganha o segundo escudo quando a vida entra no vermelho
+  if (checarSegundoEscudo(pFX, playerHP, pEl)) avisos.push('🌑 Espelho recarregou');
+  checarSegundoEscudo(rFX, rivalHP, rEl);
+
+  // expira o congelamento que já valia antes deste turno
+  if (congelavaP && pFX.congelado > 0) pFX.congelado--;
+  if (congelavaR && rFX.congelado > 0) rFX.congelado--;
+
+  // Eclipse: sorteia agora o golpe do rival e mostra pro jogador
+  if (pFX.revelar) {
+    pFX.revelar = false;
+    golpeRivalPreDefinido = cpuChoice();
+    avisos.push('🌑 próximo golpe do rival: ' + NOME_GOLPE[golpeRivalPreDefinido]);
+  }
 
   updateBars();
+  mostrarAvisos(avisos);
   roundResult.textContent = text;
   roundResult.classList.remove('flash');
   void roundResult.offsetWidth;
