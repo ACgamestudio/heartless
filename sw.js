@@ -8,7 +8,7 @@
 // IMPORTANTE: ao mudar qualquer arquivo do jogo, suba o número da VERSAO abaixo.
 // Sem isso, o navegador continua servindo a versão antiga que está no cache.
 // ─────────────────────────────────────────────────────────────────────────────
-const VERSAO = 'jokenpo-v2';
+const VERSAO = 'jokenpo-v3';
 const CACHE_APP = VERSAO + '-app';
 const CACHE_MIDIA = VERSAO + '-midia';
 

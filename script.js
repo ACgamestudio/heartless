@@ -69,11 +69,34 @@ async function enterImmersiveMode() {
 // TELA 1 -> INICIAR: dispara vídeo da produtora com som (gesto do usuário
 // libera o áudio no navegador), entra em tela cheia e trava paisagem
 // --------------------------------------------------------------------------
+let modoArcadePedido = false;
+
 document.getElementById('btn-start').addEventListener('click', () => {
+  modoArcadePedido = false;
   SoundEngine.unlock();
   enterImmersiveMode();
   goToVideo('produtora', screens.produtora, () => goToVideo('intro', screens.intro, goToSelect));
 });
+
+// Botão de Arcade criado por código: o index.html não precisa mudar.
+(function criarBotaoArcade() {
+  if (typeof Arcade === 'undefined') return;
+  const btnStart = document.getElementById('btn-start');
+  const btn = document.createElement('button');
+  btn.id = 'btn-arcade';
+  btn.className = 'btn-ghost';
+  btn.type = 'button';
+  btn.style.marginTop = '10px';
+  const rec = Arcade.recorde();
+  btn.innerHTML = 'MODO ARCADE' + (rec ? ` <small style="opacity:.6">· recorde ${rec}/6</small>` : '');
+  btn.addEventListener('click', () => {
+    modoArcadePedido = true;
+    SoundEngine.unlock();
+    enterImmersiveMode();
+    goToVideo('produtora', screens.produtora, () => goToVideo('intro', screens.intro, goToSelect));
+  });
+  btnStart.parentElement.appendChild(btn);
+})();
 
 function goToVideo(key, screenEl, onFinish) {
   showScreen(key === 'produtora' ? 'produtora' : 'intro');
@@ -539,7 +562,15 @@ function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
 
 function startGame(chosen) {
   player = chosen;
-  rival = pickRival(chosen.id);
+
+  // no arcade o adversário é o degrau da escada, não sorteio
+  if (typeof Arcade !== 'undefined' && modoArcadePedido && !Arcade.ativo) {
+    rival = Arcade.iniciar(chosen);
+  } else if (typeof Arcade !== 'undefined' && Arcade.ativo) {
+    rival = Arcade.rivalAtual() || pickRival(chosen.id);
+  } else {
+    rival = pickRival(chosen.id);
+  }
   playerHP = MAX_HP;
   rivalHP = MAX_HP;
   playerMeter = 0;
@@ -581,6 +612,19 @@ function startGame(chosen) {
   overlayEnd.classList.add('hidden');
   victoryVideoEl.style.display = 'none';
   victoryVideoEl.removeAttribute('src');
+
+  // a arena é o elemento do RIVAL: você entra no território dele
+  if (typeof StageFX !== 'undefined') {
+    const chaveArena = StageFX.POR_PERSONAGEM[rival.id] || rEl;
+    StageFX.mostrar(chaveArena);
+  }
+
+  // chefão do arcade entra com metade do medidor já carregado
+  if (typeof Arcade !== 'undefined' && Arcade.ativo && Arcade.chefeAgora) {
+    rivalMeter = 60;
+    updateBars();
+    roundResult.textContent = `${rival.name} é o CHEFÃO. Cuidado com a ultimate.`;
+  }
 
   showScreen('game');
   BGM.start();
@@ -663,7 +707,15 @@ function updateCombo(pDmg, cDmg) {
 // estiver cheio.
 // --------------------------------------------------------------------------
 function cpuChoice() {
-  if (rivalMeter >= 100 && rFX.congelado === 0 && Math.random() < 0.55) return 'special';
+  const dif = (typeof Arcade !== 'undefined' && Arcade.ativo) ? Arcade.dificuldade : 0;
+
+  // quanto maior a dificuldade, mais a IA aproveita a ultimate quando tem
+  if (rivalMeter >= 100 && rFX.congelado === 0 && Math.random() < 0.55 + dif * 0.4) return 'special';
+
+  // e mais ela pune vida baixa em vez de sortear no vácuo
+  if (dif > 0.4 && playerHP <= 25 && Math.random() < dif) return 'kick';
+  if (dif > 0.4 && rivalHP <= 25 && Math.random() < dif * 0.5) return 'block';
+
   const roll = Math.random();
   if (roll < 0.38) return 'punch';
   if (roll < 0.76) return 'kick';
@@ -776,7 +828,9 @@ function playTurn(playerMove) {
 
   if (specialUserId) {
     const fonte = fonteDoClipe('sp:' + specialUserId, urlEspecial(specialUserId));
+    if (typeof StageFX !== 'undefined') StageFX.pausar();
     playClip(specialVideoEl, specialOverlay, fonte, 2500, () => {
+      if (typeof StageFX !== 'undefined') StageFX.retomar();
       resolveAndApply(playerMove, rivalMove);
     });
   } else {
@@ -801,7 +855,9 @@ function resolveAndApply(playerMove, rivalMove) {
     pNome: player.name, rNome: rival.name
   });
 
-  const pDmg = res.pDmg, cDmg = res.cDmg, text = res.text;
+  // no arcade o rival bate mais forte conforme a escada sobe (até +20%)
+  const escala = (typeof Arcade !== 'undefined' && Arcade.ativo) ? 1 + Arcade.dificuldade * 0.2 : 1;
+  const pDmg = Math.round(res.pDmg * escala), cDmg = res.cDmg, text = res.text;
   const avisos = res.avisos.slice();
 
   playerHP = clamp(playerHP - pDmg + res.pCura, 0, MAX_HP);
@@ -916,18 +972,78 @@ function endGame(result) {
 
   if (result === 'win') {
     launchConfetti();
-    playClip(victoryVideoEl, null, `./assets/videos/victory/${player.id}.mp4`, 8000, () => {});
+    playClip(victoryVideoEl, null, fonteDoClipe('vt:' + player.id, urlVitoria(player.id)), 8000, () => {});
+  }
+
+  // ---------- arcade: a escada decide o que vem depois ----------
+  if (typeof Arcade !== 'undefined' && Arcade.ativo) {
+    if (typeof StageFX !== 'undefined') StageFX.pausar();
+
+    if (result === 'win') {
+      const eraChefao = Arcade.ehUltima();
+      Arcade.salvarRecorde(Arcade.indice + 1);
+      const temMais = Arcade.avancar();
+      // dá tempo do confete e do clipe de vitória aparecerem antes da escada
+      setTimeout(() => {
+        overlayEnd.classList.add('hidden');
+        Arcade.mostrarTela(eraChefao || !temMais ? 'campeao' : 'proxima');
+      }, eraChefao ? 3200 : 2200);
+    } else {
+      Arcade.salvarRecorde(Arcade.indice);
+      setTimeout(() => {
+        overlayEnd.classList.add('hidden');
+        Arcade.mostrarTela('derrota');
+      }, 1800);
+    }
   }
 }
 
 btnRestart.addEventListener('click', () => {
   overlayEnd.classList.add('hidden');
+  if (typeof Arcade !== 'undefined' && Arcade.ativo) return; // a escada cuida do fluxo
   showScreen('select');
 });
 
 btnMenu.addEventListener('click', () => {
+  if (typeof Arcade !== 'undefined' && Arcade.ativo) {
+    Arcade.encerrar();
+    modoArcadePedido = false;
+  }
+  if (typeof StageFX !== 'undefined') StageFX.esconder();
   showScreen('select');
 });
+
+// ---------- botões da tela de escada do arcade ----------
+(function ligarArcade() {
+  if (typeof Arcade === 'undefined') return;
+  Arcade.garantirTela();
+
+  document.getElementById('arcade-seguir').addEventListener('click', () => {
+    Arcade.esconderTela();
+    const modo = Arcade._modo;
+
+    if (modo === 'proxima') {
+      startGame(player);                 // mesmo lutador, próximo degrau
+      return;
+    }
+    // campeão ou derrota: zera a corrida e volta pra seleção
+    Arcade.encerrar();
+    modoArcadePedido = true;             // segue no arcade se escolher outro lutador
+    const btn = document.getElementById('btn-arcade');
+    if (btn) {
+      const rec = Arcade.recorde();
+      btn.innerHTML = 'MODO ARCADE' + (rec ? ` <small style="opacity:.6">· recorde ${rec}/6</small>` : '');
+    }
+    showScreen('select');
+  });
+
+  document.getElementById('arcade-sair').addEventListener('click', () => {
+    Arcade.esconderTela();
+    Arcade.encerrar();
+    modoArcadePedido = false;
+    showScreen('select');
+  });
+})();
 
 // --------------------------------------------------------------------------
 // Confete de vitória (efeito 100% em código, sem depender de gif externo)
