@@ -1,0 +1,15 @@
+{
+  "name": "JokenPo — Jogo de Luta",
+  "short_name": "JokenPo",
+  "description": "Pedra, papel e tesoura virou jogo de luta.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#09050F",
+  "theme_color": "#09050F",
+  "icons": [
+    { "src": "./assets/img/poster.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "./assets/img/poster.png", "sizes": "192x192", "type": "image/png", "purpose": "any" }
+  ]
+}

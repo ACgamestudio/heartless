@@ -8,6 +8,20 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Rubik:wght@400;600;800&display=swap" rel="stylesheet">
+  <link rel="manifest" href="./manifest.json">
+  <meta name="theme-color" content="#09050F">
+  <script>
+    // Registra o service worker: é ele que guarda o jogo e os vídeos no
+    // aparelho. Depois da primeira partida, os clipes não passam mais pela
+    // rede — e o jogo abre até sem internet.
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then(reg => console.info('[SW] ativo, escopo', reg.scope))
+          .catch(err => console.warn('[SW] não registrou:', err));
+      });
+    }
+  </script>
 </head>
 <body>
 
@@ -70,24 +84,6 @@
         <span class="hero-code" id="hero-code">aguardando</span>
         <h3 class="hero-name" id="hero-name">SELECIONE</h3>
         <span class="hero-badge padrao" id="hero-badge">— — —</span>
-
-        <div class="hero-kit" id="hero-kit">
-          <div class="kit-top">
-            <span class="kit-icone" id="kit-icone">·</span>
-            <div class="kit-id">
-              <b id="kit-nome">ELEMENTO</b>
-              <span id="kit-lema">escolha um lutador</span>
-            </div>
-          </div>
-          <div class="kit-afin">
-            <span class="afin forte">FORTE<b id="kit-forte">—</b></span>
-            <span class="afin fraco">FRACO<b id="kit-fraco">—</b></span>
-          </div>
-          <div class="kit-hab">
-            <p><i>PASSIVA</i><b id="kit-passiva-nome">—</b><span id="kit-passiva">—</span></p>
-            <p><i>ULTIMATE</i><b id="kit-ult-nome">—</b><span id="kit-ult">—</span></p>
-          </div>
-        </div>
       </div>
     </div>
 
@@ -123,10 +119,8 @@
     <div class="fighter-block">
       <div class="fighter-row">
         <span id="player-name" class="fighter-name">Você</span>
-        <span id="player-el" class="el-chip"></span>
         <span id="player-hp-num" class="hp-num">100</span>
       </div>
-      <div id="player-fx" class="fx-row"></div>
       <div id="player-hp-outer" class="hp-bar-outer">
         <div id="player-hp-ghost" class="hp-bar-ghost"></div>
         <div id="player-hp-fill" class="hp-bar-fill hp-fill-player"></div>
@@ -144,10 +138,8 @@
     <div class="fighter-block fighter-block-rival">
       <div class="fighter-row">
         <span id="rival-name" class="fighter-name">Rival</span>
-        <span id="rival-el" class="el-chip"></span>
         <span id="rival-hp-num" class="hp-num">100</span>
       </div>
-      <div id="rival-fx" class="fx-row"></div>
       <div id="rival-hp-outer" class="hp-bar-outer">
         <div id="rival-hp-ghost" class="hp-bar-ghost"></div>
         <div id="rival-hp-fill" class="hp-bar-fill hp-fill-rival"></div>
@@ -162,11 +154,6 @@
       <span id="player-dmg" class="dmg-popup"></span>
     </div>
     <div id="combo" class="combo"></div>
-    <div id="clash-fx" class="clash-fx" aria-hidden="true">
-      <span class="cfx cfx-p" id="cfx-p"></span>
-      <i class="cfx-burst" id="cfx-burst"></i>
-      <span class="cfx cfx-r" id="cfx-r"></span>
-    </div>
     <div id="clash" class="clash"></div>
     <div class="portrait-stage stage-rival">
       <img id="rival-portrait" class="portrait" alt="rival">
@@ -176,8 +163,6 @@
 
   <div class="result-panel">
     <p id="round-result" class="round-result">Faça sua jogada!</p>
-    <p id="round-mods" class="round-mods"></p>
-    <p id="reveal" class="reveal hidden"></p>
   </div>
 
   <div class="choices">
@@ -223,17 +208,12 @@
     </button>
   </div>
 
-  <div class="arena-tools">
-    <button id="btn-menu" class="btn-ghost">&larr; Trocar lutador</button>
-    <button id="btn-cine" class="btn-ghost" type="button" title="Ritmo da cinemática do especial">🎬 CINEMÁTICA: COMPLETA</button>
-  </div>
+  <button id="btn-menu" class="btn-ghost">&larr; Trocar lutador</button>
 </section>
 
 <!-- ===================== OVERLAY: VÍDEO DE ESPECIAL ===================== -->
 <div id="special-overlay" class="video-overlay hidden">
   <video id="special-video" playsinline></video>
-  <button class="btn-skip" id="btn-skip-special" type="button">Pular ▶</button>
-  <span class="skip-hint" id="skip-hint">toque em qualquer lugar para pular</span>
 </div>
 
 <!-- ===================== OVERLAY: FIM DE JOGO ===================== -->
@@ -251,7 +231,6 @@
 
 <script src="./sound.js"></script>
 <script src="./characters.js"></script>
-<script src="./elements.js"></script>
 <script src="./script.js"></script>
 </body>
 </html>

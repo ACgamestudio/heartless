@@ -81,10 +81,15 @@ function goToVideo(key, screenEl, onFinish) {
   const fallback = screenEl.querySelector('.video-fallback');
   let finished = false;
 
-  const finish = () => {
+  const finish = (pulou) => {
     if (finished) return;
     finished = true;
     video.pause();
+    // pause() NÃO interrompe o download: o navegador continua baixando o resto
+    // do arquivo em segundo plano. Quem pula a intro no segundo 2 seguia
+    // puxando o vídeo inteiro, roubando banda dos assets da próxima tela.
+    // Zerar as fontes e chamar load() é o jeito de abortar a transferência.
+    if (pulou) abortarDownload(video);
     onFinish();
   };
 
@@ -95,18 +100,42 @@ function goToVideo(key, screenEl, onFinish) {
     playPromise.catch(() => {
       // não conseguiu tocar (arquivo ausente ou bloqueado) -> mostra aviso e segue
       fallback.style.display = 'block';
-      setTimeout(finish, 1800);
+      setTimeout(() => finish(true), 1800);
     });
   }
 
   video.onerror = () => {
     fallback.style.display = 'block';
-    setTimeout(finish, 1800);
+    setTimeout(() => finish(true), 1800);
   };
 
-  video.onended = finish;
+  video.onended = () => finish(false);
 
-  screenEl.querySelector('.btn-skip').onclick = finish;
+  screenEl.querySelector('.btn-skip').onclick = () => finish(true);
+}
+
+// Interrompe de verdade o download de um <video>, sem perder a fonte original
+// (guardada em data-src, caso você queira oferecer "rever a intro" no menu).
+function abortarDownload(video) {
+  try {
+    const fonte = video.querySelector('source');
+    if (fonte && !video.dataset.src) video.dataset.src = fonte.getAttribute('src');
+    video.removeAttribute('src');
+    while (video.firstChild) video.removeChild(video.firstChild);
+    video.load();
+  } catch (e) {
+    console.warn('[video] não consegui abortar o download:', e);
+  }
+}
+
+// Recoloca a fonte guardada, se um dia quiser um botão "rever intro"
+function restaurarVideo(video) {
+  if (!video.dataset.src || video.querySelector('source')) return;
+  const s = document.createElement('source');
+  s.setAttribute('src', video.dataset.src);
+  s.setAttribute('type', 'video/mp4');
+  video.appendChild(s);
+  video.load();
 }
 
 function goToSelect() {
@@ -142,17 +171,10 @@ CHARACTERS.forEach((ch, i) => {
   card.style.setProperty('--card-color', ch.color);
   card.style.animationDelay = (i * 28) + 'ms';
   card.setAttribute('aria-label', ch.name);
-  const el = elementoDe(ch.id);
-  card.style.setProperty('--el-color', el.cor);
   card.innerHTML =
     `<img src="${charImg(ch.id)}" alt="${ch.name}" loading="lazy">` +
     (hasCinematic(ch.id) ? '<span class="char-cine" title="especial cinematográfico">&#9733;</span>' : '') +
-    `<span class="char-el" title="${el.nome} — ${el.passiva.nome}">${el.icone}</span>` +
-    `<div class="char-name-plate">` +
-      `<span>${ch.name}</span>` +
-      `<em class="char-kit">${el.passiva.curto}</em>` +
-      `<em class="char-ult">${el.ultimate.icone || '★'} ${el.ultimate.nome}</em>` +
-    `</div>`;
+    `<div class="char-name-plate"><span>${ch.name}</span></div>`;
 
   // no PC, passar o mouse já mostra o lutador no painel; sair volta ao escolhido
   card.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') preview(ch); });
@@ -176,7 +198,6 @@ function preview(ch) {
     heroCode.textContent = 'aguardando';
     heroBadge.textContent = '— — —';
     heroBadge.className = 'hero-badge padrao';
-    limparKit();
     rosterIndexEl.textContent = '--';
     selectScreenEl.style.removeProperty('--sel');
     return;
@@ -193,53 +214,8 @@ function preview(ch) {
   const cine = hasCinematic(ch.id);
   heroBadge.textContent = cine ? '\u2605 especial cinematográfico' : 'especial padrão';
   heroBadge.className = 'hero-badge' + (cine ? '' : ' padrao');
-  mostrarKit(ch);
   rosterIndexEl.textContent = String(CHARACTERS.indexOf(ch) + 1).padStart(2, '0');
   selectScreenEl.style.setProperty('--sel', ch.color);
-}
-
-const kitEls = {
-  box: document.getElementById('hero-kit'),
-  icone: document.getElementById('kit-icone'),
-  nome: document.getElementById('kit-nome'),
-  lema: document.getElementById('kit-lema'),
-  forte: document.getElementById('kit-forte'),
-  fraco: document.getElementById('kit-fraco'),
-  passivaNome: document.getElementById('kit-passiva-nome'),
-  passiva: document.getElementById('kit-passiva'),
-  ultNome: document.getElementById('kit-ult-nome'),
-  ult: document.getElementById('kit-ult'),
-};
-
-function mostrarKit(ch) {
-  const k = chaveElemento(ch.id);
-  const el = ELEMENTS[k];
-  const f = ELEMENTS[forteContra(k)], w = ELEMENTS[fracoContra(k)];
-  kitEls.box.style.setProperty('--el-color', el.cor);
-  kitEls.box.classList.add('on');
-  kitEls.icone.textContent = el.icone;
-  kitEls.nome.textContent = el.nome.toUpperCase();
-  kitEls.lema.textContent = el.lema;
-  kitEls.forte.textContent = `${f.icone} ${f.nome}`;
-  kitEls.fraco.textContent = `${w.icone} ${w.nome}`;
-  kitEls.passivaNome.textContent = el.passiva.nome;
-  kitEls.passiva.textContent = el.passiva.texto;
-  kitEls.ultNome.textContent = el.ultimate.nome;
-  kitEls.ult.textContent = el.ultimate.texto;
-}
-
-function limparKit() {
-  kitEls.box.classList.remove('on');
-  kitEls.box.style.removeProperty('--el-color');
-  kitEls.icone.textContent = '\u00b7';
-  kitEls.nome.textContent = 'ELEMENTO';
-  kitEls.lema.textContent = 'escolha um lutador';
-  kitEls.forte.textContent = '—';
-  kitEls.fraco.textContent = '—';
-  kitEls.passivaNome.textContent = '—';
-  kitEls.passiva.textContent = '—';
-  kitEls.ultNome.textContent = '—';
-  kitEls.ult.textContent = '—';
 }
 
 function selectCharacter(ch, card) {
@@ -338,62 +314,58 @@ const victoryVideoEl = document.getElementById('victory-video');
 const specialOverlay = document.getElementById('special-overlay');
 const specialVideoEl = document.getElementById('special-video');
 
+// ---------- pré-carregamento dos clipes de especial ----------
+// Antes, o download do vídeo começava no instante em que o especial era usado:
+// o clipe entrava travando porque estava sendo baixado enquanto tocava.
+// Agora, assim que a luta começa, os clipes dos DOIS lutadores são baixados
+// inteiros em segundo plano e guardados em memória (blob). Quando o especial
+// sai, o vídeo já está local — toca instantâneo, sem depender da rede.
+const CLIPES = new Map();
+const CLIPES_BAIXANDO = new Set();
+
+function urlEspecial(id) { return `./assets/videos/specials/${id}.mp4`; }
+function urlVitoria(id) { return `./assets/videos/victory/${id}.mp4`; }
+
+async function precarregarClipe(chave, url) {
+  if (CLIPES.has(chave) || CLIPES_BAIXANDO.has(chave)) return;
+  CLIPES_BAIXANDO.add(chave);
+  try {
+    const r = await fetch(url, { cache: 'force-cache' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    CLIPES.set(chave, URL.createObjectURL(await r.blob()));
+  } catch (e) {
+    // 404 é normal: só 5 personagens têm clipe próprio
+    console.info('[clipe] sem pré-carga para', chave);
+  } finally {
+    CLIPES_BAIXANDO.delete(chave);
+  }
+}
+
+function fonteDoClipe(chave, url) {
+  return CLIPES.get(chave) || url;
+}
+
 // --------------------------------------------------------------------------
 // Toca um clipe de vídeo específico de personagem (especial ou vitória).
 // Se o arquivo ainda não existir, ou falhar por qualquer motivo, chama o
 // callback imediatamente — o jogo nunca trava esperando um vídeo ausente.
 // --------------------------------------------------------------------------
-// --------------------------------------------------------------------------
-// Ritmo da cinemática do especial. Três estados, guardados no navegador:
-//   completa  -> velocidade normal
-//   rapida    -> 1.75x
-//   off       -> nem abre o vídeo, o turno resolve na hora
-// --------------------------------------------------------------------------
-const CINE_MODOS = ['completa', 'rapida', 'off'];
-const CINE_ROTULO = { completa: 'COMPLETA', rapida: 'RÁPIDA 1,75×', off: 'DESLIGADA' };
-const CINE_RATE = { completa: 1, rapida: 1.75, off: 0 };
-
-let cineModo = 'completa';
-try { const g = localStorage.getItem('hlowo-cine'); if (CINE_MODOS.includes(g)) cineModo = g; } catch (e) {}
-
-const btnCine = document.getElementById('btn-cine');
-const btnSkipSpecial = document.getElementById('btn-skip-special');
-const skipHint = document.getElementById('skip-hint');
-let pularClipe = null;   // função de skip do clipe em execução
-
-function pintarCine() {
-  btnCine.textContent = '🎬 CINEMÁTICA: ' + CINE_ROTULO[cineModo];
-  btnCine.classList.toggle('cine-off', cineModo === 'off');
-}
-btnCine.addEventListener('click', () => {
-  cineModo = CINE_MODOS[(CINE_MODOS.indexOf(cineModo) + 1) % CINE_MODOS.length];
-  try { localStorage.setItem('hlowo-cine', cineModo); } catch (e) {}
-  pintarCine();
-  SFX.select();
-});
-pintarCine();
-
-// pular: botão, clique em qualquer lugar do overlay, Esc ou Enter
-btnSkipSpecial.addEventListener('click', (e) => { e.stopPropagation(); if (pularClipe) pularClipe(); });
-specialOverlay.addEventListener('click', () => { if (pularClipe) pularClipe(); });
-document.addEventListener('keydown', (e) => {
-  if (!pularClipe) return;
-  if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pularClipe(); }
-});
-
 function playClip(videoEl, overlayEl, src, maxDurationMs, callback) {
   let done = false;
   let safety;
+  let travouEm = null;
   const finish = () => {
     if (done) return;
     done = true;
     clearTimeout(safety);
     if (overlayEl) overlayEl.classList.add('hidden');
-    if (overlayEl === specialOverlay) pularClipe = null;
     videoEl.pause();
     videoEl.onended = null;
     videoEl.onerror = null;
-    videoEl.onloadedmetadata = null;
+    videoEl.oncanplay = null;
+    videoEl.onwaiting = null;
+    videoEl.onplaying = null;
+    clearTimeout(travouEm);
     if (callback) callback();
   };
   const finishWithError = () => {
@@ -410,27 +382,33 @@ function playClip(videoEl, overlayEl, src, maxDurationMs, callback) {
   // frente depois desse tempo em vez de travar esperando um arquivo ausente.
   armSafety(maxDurationMs);
 
-  if (overlayEl === specialOverlay) {
-    pularClipe = finish;
-    skipHint.classList.remove('sumiu');
-    setTimeout(() => skipHint.classList.add('sumiu'), 2200);
-  }
-
   videoEl.src = src;
   videoEl.currentTime = 0;
   videoEl.muted = false;
-  videoEl.playbackRate = CINE_RATE[cineModo] || 1;
   if (overlayEl) overlayEl.classList.remove('hidden');
   else videoEl.style.display = 'block';
 
   // Assim que soubermos a duração real do clipe, a trava passa a valer a
   // duração inteira do vídeo (+ folga) em vez do valor inicial curto —
   // então o vídeo sempre toca até o fim, e a trava só é um fallback real.
-  videoEl.onloadedmetadata = () => {
+  // Só estende a trava quando o vídeo REALMENTE pode tocar ('canplay').
+  // Usar 'loadedmetadata' era um bug: os metadados chegam em milissegundos,
+  // a trava ia pra 15s, e o clipe ficava esse tempo todo engasgando no buffer.
+  videoEl.oncanplay = () => {
     if (isFinite(videoEl.duration) && videoEl.duration > 0) {
       armSafety(videoEl.duration * 1000 + 800);
     }
   };
+
+  // Se a reprodução parar pra esperar download por mais de 1,2s, desiste do
+  // clipe e segue a luta. Melhor perder a cinemática do que travar o jogo.
+  videoEl.onwaiting = () => {
+    travouEm = setTimeout(() => {
+      console.warn('[clipe] buffer travado, seguindo sem a cinemática');
+      finishWithError();
+    }, 1200);
+  };
+  videoEl.onplaying = () => { clearTimeout(travouEm); travouEm = null; };
 
   const playPromise = videoEl.play();
   if (playPromise) playPromise.catch(finishWithError);
@@ -450,16 +428,6 @@ let rivalMeter = 0;
 let gameOver = false;
 let locked = false;
 let combo = 0;
-let pFX = novoEstadoFX();
-let rFX = novoEstadoFX();
-let golpeRevelado = null;   // golpe do rival já sorteado, revelado pelo Eclipse
-
-const playerElChip = document.getElementById('player-el');
-const rivalElChip  = document.getElementById('rival-el');
-const playerFxRow  = document.getElementById('player-fx');
-const rivalFxRow   = document.getElementById('rival-fx');
-const roundMods    = document.getElementById('round-mods');
-const revealEl     = document.getElementById('reveal');
 
 function pickRival(excludeId) {
   const pool = CHARACTERS.filter(c => c.id !== excludeId);
@@ -477,11 +445,6 @@ function startGame(chosen) {
   rivalMeter = 0;
   gameOver = false;
   locked = false;
-  pFX = novoEstadoFX();
-  rFX = novoEstadoFX();
-  golpeRevelado = null;
-  revealEl.classList.add('hidden');
-  roundMods.textContent = '';
 
   combo = 0;
   comboEl.classList.remove('on');
@@ -490,22 +453,16 @@ function startGame(chosen) {
   gameScreenEl.style.setProperty('--p', player.color);
   gameScreenEl.style.setProperty('--r', rival.color);
 
+  // baixa em segundo plano os clipes que podem aparecer nesta luta
+  if (hasCinematic(player.id)) precarregarClipe('sp:' + player.id, urlEspecial(player.id));
+  if (hasCinematic(rival.id)) precarregarClipe('sp:' + rival.id, urlEspecial(rival.id));
+  precarregarClipe('vt:' + player.id, urlVitoria(player.id));
+
   playerPortrait.src = charImg(player.id);
   rivalPortrait.src = charImg(rival.id);
   playerNameEl.textContent = player.name;
   rivalNameEl.textContent = rival.name;
 
-  const pEl = elementoDe(player.id), rEl = elementoDe(rival.id);
-  const mult = multiplicadorAfinidade(chaveElemento(player.id), chaveElemento(rival.id));
-  playerElChip.textContent = pEl.icone + ' ' + pEl.nome;
-  rivalElChip.textContent  = rEl.icone + ' ' + rEl.nome;
-  playerElChip.style.setProperty('--el-color', pEl.cor);
-  rivalElChip.style.setProperty('--el-color', rEl.cor);
-  playerElChip.className = 'el-chip ' + (mult > 1 ? 'vantagem' : mult < 1 ? 'desvantagem' : '');
-  rivalElChip.className   = 'el-chip ' + (mult > 1 ? 'desvantagem' : mult < 1 ? 'vantagem' : '');
-
-  btnSpecial.querySelector('.lbl').textContent = pEl.ultimate.nome;
-  desenharFX();
   updateBars();
   roundResult.textContent = 'Faça sua jogada!';
   overlayEnd.classList.add('hidden');
@@ -514,21 +471,6 @@ function startGame(chosen) {
 
   showScreen('game');
   BGM.start();
-}
-
-/** Pastilhas de veneno, queimadura, congelamento e escudo. */
-function desenharFX() {
-  const pinta = (row, fx, el) => {
-    const p = [];
-    if (fx.escudo && el === 'sombra') p.push(['🌑', 'Espelho pronto']);
-    if (fx.veneno > 0)      p.push(['☠️ ' + fx.veneno, 'Veneno: ' + (fx.veneno * BALANCE.venenoPorPilha) + ' por turno']);
-    if (fx.queimadura > 0)  p.push(['🔥 ' + fx.queimadura, 'Queimando por ' + fx.queimadura + ' turno(s)']);
-    if (fx.congelado > 0)   p.push(['❄️', 'Especial travado']);
-    if (fx.sequencia > 0 && el === 'chama') p.push(['🔥+' + Math.min(BALANCE.combustaoTeto, fx.sequencia * BALANCE.combustaoPasso), 'Combustão']);
-    row.innerHTML = p.map(([t, d]) => `<span class="fx" title="${d}">${t}</span>`).join('');
-  };
-  pinta(playerFxRow, pFX, chaveElemento(player.id));
-  pinta(rivalFxRow,  rFX, chaveElemento(rival.id));
 }
 
 function updateBars() {
@@ -562,51 +504,7 @@ function updateBars() {
   const chg = btnSpecial.querySelector('.chg');
   if (chg) chg.textContent = pMe >= 100 ? 'PRONTO' : pMe + '%';
   btnSpecial.classList.toggle('armed', pMe >= 100);
-  btnSpecial.disabled = playerMeter < 100 || gameOver || locked || pFX.congelado > 0;
-  btnSpecial.classList.toggle('frozen', pFX.congelado > 0);
-}
-
-// --------------------------------------------------------------------------
-// Choque de glifos: reaproveita os mesmos SVG dos botões de golpe. O glifo do
-// jogador entra pela esquerda, o do rival pela direita, colidem no centro e
-// quem perdeu o turno recua e se desfaz. Zero arte nova.
-// --------------------------------------------------------------------------
-const MOVE_TINT = { punch: '#ff7a4d', kick: 'var(--pink)', block: 'var(--cyan)', special: '#ffd23f' };
-const MOVE_GLYPH = {};
-document.querySelectorAll('.choice-btn').forEach(b => {
-  const g = b.querySelector('.glyph');
-  if (g) MOVE_GLYPH[b.dataset.choice] = g.innerHTML;
-});
-
-const cfxP = document.getElementById('cfx-p');
-const cfxR = document.getElementById('cfx-r');
-const cfxBurst = document.getElementById('cfx-burst');
-
-function clashFx(pMove, rMove, pDmg, cDmg) {
-  const pVence = cDmg > 0 && pDmg === 0;
-  const rVence = pDmg > 0 && cDmg === 0;
-  const troca   = pDmg > 0 && cDmg > 0;
-  const nada    = pDmg === 0 && cDmg === 0;
-
-  const pEstado = pVence ? 'vence' : rVence ? 'perde' : troca ? 'troca' : 'neutro';
-  const rEstado = rVence ? 'vence' : pVence ? 'perde' : troca ? 'troca' : 'neutro';
-
-  const pinta = (el, move, estado) => {
-    el.innerHTML = MOVE_GLYPH[move] || '';
-    el.style.setProperty('--tint', MOVE_TINT[move] || 'var(--text)');
-    el.className = 'cfx ' + (el === cfxP ? 'cfx-p ' : 'cfx-r ') + estado;
-    void el.offsetWidth;
-    el.classList.add('go');
-  };
-  pinta(cfxP, pMove, pEstado);
-  pinta(cfxR, rMove, rEstado);
-
-  const forte = Math.max(pDmg, cDmg) >= 18 || pMove === 'special' || rMove === 'special';
-  cfxBurst.className = 'cfx-burst ' + (nada ? 'guarda' : forte ? 'forte' : 'normal');
-  cfxBurst.style.setProperty('--tint',
-    nada ? 'var(--cyan)' : MOVE_TINT[pVence ? pMove : rVence ? rMove : pMove] || '#fff');
-  void cfxBurst.offsetWidth;
-  cfxBurst.classList.add('go');
+  btnSpecial.disabled = playerMeter < 100 || gameOver || locked;
 }
 
 /** Estouro visual no centro da arena de acordo com o resultado do turno. */
@@ -642,7 +540,7 @@ function updateCombo(pDmg, cDmg) {
 // estiver cheio.
 // --------------------------------------------------------------------------
 function cpuChoice() {
-  if (rivalMeter >= 100 && rFX.congelado === 0 && Math.random() < 0.55) return 'special';
+  if (rivalMeter >= 100 && Math.random() < 0.55) return 'special';
   const roll = Math.random();
   if (roll < 0.38) return 'punch';
   if (roll < 0.76) return 'kick';
@@ -744,16 +642,15 @@ document.addEventListener('keydown', (e) => {
 function playTurn(playerMove) {
   locked = true;
   SFX[playerMove]();
-  const rivalMove = golpeRevelado || cpuChoice();
-  golpeRevelado = null;
-  revealEl.classList.add('hidden');
+  const rivalMove = cpuChoice();
 
   // Se alguém usou o Especial, toca o clipe daquele personagem antes de
   // aplicar o resultado (se o arquivo ainda não existir, segue direto).
   const specialUserId = playerMove === 'special' ? player.id : (rivalMove === 'special' ? rival.id : null);
 
-  if (specialUserId && cineModo !== 'off') {
-    playClip(specialVideoEl, specialOverlay, `./assets/videos/specials/${specialUserId}.mp4`, 2500, () => {
+  if (specialUserId) {
+    const fonte = fonteDoClipe('sp:' + specialUserId, urlEspecial(specialUserId));
+    playClip(specialVideoEl, specialOverlay, fonte, 2500, () => {
       resolveAndApply(playerMove, rivalMove);
     });
   } else {
@@ -762,61 +659,24 @@ function playTurn(playerMove) {
 }
 
 function resolveAndApply(playerMove, rivalMove) {
-  // veneno e queimadura das rodadas anteriores cobram primeiro; doses novas
-  // aplicadas neste turno só passam a doer no turno seguinte
-  const dcP = danoContinuo(pFX), dcR = danoContinuo(rFX);
+  const { pDmg, cDmg, pMeterGain, cMeterGain, text } = resolveTurn(playerMove, rivalMove);
 
-  const base = resolveTurn(playerMove, rivalMove);
-
-  const pk = chaveElemento(player.id), rk = chaveElemento(rival.id);
-  const res = aplicarElementos({
-    base, pMove: playerMove, rMove: rivalMove, pEl: pk, rEl: rk,
-    pFX, rFX, pHP: playerHP, rHP: rivalHP, maxHP: MAX_HP,
-    pMeter: playerMeter, rMeter: rivalMeter,
-    pNome: player.name, rNome: rival.name,
-  });
-  const { pDmg, cDmg, pMeterGain, cMeterGain, text } = res;
-
-  playerHP = clamp(playerHP - pDmg + res.pCura, 0, MAX_HP);
-  rivalHP  = clamp(rivalHP  - cDmg + res.cCura, 0, MAX_HP);
+  playerHP = clamp(playerHP - pDmg, 0, MAX_HP);
+  rivalHP = clamp(rivalHP - cDmg, 0, MAX_HP);
   playerMeter = clamp(playerMeter + pMeterGain, 0, 100);
-  rivalMeter  = clamp(rivalMeter  + cMeterGain, 0, 100);
+  rivalMeter = clamp(rivalMeter + cMeterGain, 0, 100);
 
-  if (dcP.dano) playerHP = clamp(playerHP - dcP.dano, 0, MAX_HP);
-  if (dcR.dano) rivalHP  = clamp(rivalHP  - dcR.dano, 0, MAX_HP);
-  if (dcP.partes.length) res.avisos.push('você: ' + dcP.partes.join(' '));
-  if (dcR.partes.length) res.avisos.push(rival.name + ': ' + dcR.partes.join(' '));
-
-  if (pFX.congelado > 0) pFX.congelado--;
-  if (rFX.congelado > 0) rFX.congelado--;
-
-  if (checarSegundoEscudo(pFX, playerHP, pk)) res.avisos.push('🌑 novo Espelho formado');
-  checarSegundoEscudo(rFX, rivalHP, rk);
-
-  // Eclipse: sorteia e mostra o próximo golpe do rival
-  if (pFX.revelar) {
-    pFX.revelar = false;
-    golpeRevelado = cpuChoice();
-    revealEl.textContent = '🌑 ECLIPSE — o próximo golpe do rival: ' + MOVE_LABEL[golpeRevelado].toUpperCase();
-    revealEl.classList.remove('hidden');
-  }
-
-  desenharFX();
   updateBars();
-  roundMods.textContent = res.avisos.join('  ·  ');
   roundResult.textContent = text;
   roundResult.classList.remove('flash');
   void roundResult.offsetWidth;
   roundResult.classList.add('flash');
 
-  clashFx(playerMove, rivalMove, pDmg, cDmg);
   flashClash(pDmg, cDmg);
   updateCombo(pDmg, cDmg);
 
   if (pDmg > 0) { showDamage(playerDmgEl, pDmg); hit(playerPortrait); SFX.hit(); }
-  else if (res.pCura > 0) showHeal(playerDmgEl, res.pCura);
   if (cDmg > 0) { showDamage(rivalDmgEl, cDmg); hit(rivalPortrait); SFX.hit(); }
-  else if (res.cCura > 0) showHeal(rivalDmgEl, res.cCura);
   if (playerMove === 'block' && pDmg === 0) guard(playerPortrait);
   if (rivalMove === 'block' && cDmg === 0) guard(rivalPortrait);
   if (pDmg > 0 || cDmg > 0) shakeScreen();
@@ -835,15 +695,7 @@ function resolveAndApply(playerMove, rivalMove) {
   }, 450);
 }
 
-function showHeal(el, amount) {
-  el.textContent = '+' + amount;
-  el.classList.remove('show', 'heal');
-  void el.offsetWidth;
-  el.classList.add('show', 'heal');
-}
-
 function showDamage(el, amount) {
-  el.classList.remove('heal');
   el.textContent = '-' + amount;
   el.classList.remove('show');
   void el.offsetWidth; // reinicia a animação
