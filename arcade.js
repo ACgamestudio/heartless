@@ -36,6 +36,15 @@ const StageFX = {
   jaTocou: false,     // o vídeo já começou a tocar pelo menos uma vez?
   _timerTravou: null,
   desligada: false,   // desliga sozinho em aparelho que não dá conta
+  _preFightIntro: false,
+  MESSAGES: [
+    'A arena abriu suas portas. Só um sairá vencedor.',
+    'A primeira vitória não significa nada.',
+    'O medo começa quando não há mais volta.',
+    'Você está mais perto do fim… e mais longe de sobreviver.',
+    'O próximo combate decidirá quem merece chegar ao último.',
+    'Chegou ao fim. Agora não lute para vencer. Lute para provar que você merece estar aqui.',
+  ],
 
   init() {
     const tela = document.getElementById('screen-game');
@@ -238,6 +247,7 @@ const Arcade = {
     this.escada.push(CHARACTERS.find(c => c.id === idChefao));
     this.indice = 0;
     this.ativo = true;
+    this._preFightIntro = true;
     this.atualizarDificuldade();
     return this.escada[0];
   },
@@ -264,6 +274,7 @@ const Arcade = {
     this.escada = [];
     this.dificuldade = 0;
     this.chefeAgora = false;
+    this._preFightIntro = false;
     StageFX.esconder();
   },
 
@@ -282,25 +293,36 @@ const Arcade = {
       #arcade-tela.on{display:flex}
       #arcade-tela h2{font-family:'Bungee',sans-serif;font-size:clamp(1.1rem,3.4vw,2rem);
         margin:0;letter-spacing:2px;color:#fff}
-      #arcade-tela .sub{font-size:clamp(.7rem,1.6vw,1rem);color:var(--muted);max-width:44ch}
+      #arcade-tela .sub{font-size:clamp(.9rem,1.9vw,1.15rem);color:#fff;max-width:44ch;
+        background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.16);
+        padding:1.4rem 1.6rem;border-radius:1rem;line-height:1.6;font-weight:700;
+        box-shadow:0 0 0 1px rgba(255,255,255,.05);}
       .escada{display:flex;gap:clamp(6px,1.2vw,14px);flex-wrap:nowrap;justify-content:center}
       .degrau{position:relative;width:clamp(46px,7.5vw,84px);aspect-ratio:4/5;
-        border:1px solid rgba(255,255,255,.16);border-radius:2px;overflow:hidden;
+        border:1px solid rgba(255,255,255,.08);border-radius:1rem;overflow:hidden;
         clip-path:polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px));
-        filter:grayscale(1) brightness(.4);transition:filter .3s,transform .3s}
-      .degrau img{width:100%;height:100%;object-fit:cover;object-position:top center}
+        filter:grayscale(1) brightness(.35);transition:filter .3s,transform .3s,box-shadow .3s}
+      .degrau img{width:100%;height:100%;object-fit:cover;object-position:top center;opacity:.95}
       .degrau .n{position:absolute;top:2px;left:4px;font-family:'Bungee',sans-serif;
-        font-size:9px;color:#fff;text-shadow:0 1px 3px #000}
+        font-size:9px;color:#fff;text-shadow:0 1px 6px rgba(0,0,0,.9)}
       .degrau.venceu{filter:none;border-color:#6ee7b7}
       .degrau.venceu::after{content:'✓';position:absolute;inset:0;display:grid;place-items:center;
-        font-size:clamp(18px,3vw,30px);color:#6ee7b7;background:rgba(0,0,0,.45);font-weight:700}
+        font-size:clamp(18px,3vw,30px);color:#6ee7b7;background:rgba(0,0,0,.55);font-weight:700}
       .degrau.agora{filter:none;transform:translateY(-6px) scale(1.08);
-        border-color:var(--pink);box-shadow:0 0 18px -2px var(--pink);z-index:2}
+        border-color:var(--pink);box-shadow:0 0 28px -4px var(--pink);z-index:2}
       .degrau.chefe{border-color:#ffd23f}
-      .degrau.chefe.agora{box-shadow:0 0 26px -2px #ffd23f;border-color:#ffd23f}
+      .degrau.chefe.agora{box-shadow:0 0 34px -4px #ffd23f;border-color:#ffd23f}
       .degrau .coroa{position:absolute;bottom:2px;right:4px;font-size:11px}
-      #arcade-tela .rec{font-size:clamp(.6rem,1.3vw,.8rem);letter-spacing:.14em;
-        text-transform:uppercase;color:var(--muted)}
+      #arcade-tela .rec{font-size:clamp(.6rem,1.3vw,.8rem);letter-spacing:.18em;
+        text-transform:uppercase;color:rgba(255,255,255,.65)}
+      #arcade-tela .sub{font-size:clamp(.9rem,1.9vw,1.15rem);color:#fff;max-width:44ch;
+        background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.02));
+        border:1px solid rgba(255,255,255,.12);padding:1.6rem 1.8rem;border-radius:1.4rem;
+        line-height:1.75;font-weight:700;box-shadow:0 20px 60px rgba(0,0,0,.35);
+        text-shadow:0 0 20px rgba(0,0,0,.35);}
+      #arcade-tela .sub strong{display:block;font-size:1.1em;letter-spacing:.35em;
+        color:#ffd23f;text-shadow:0 0 18px rgba(255,210,65,.75);margin-bottom:.9rem;}
+      #arcade-tela .sub em{font-style:normal;color:#a5f1ff;display:block;margin-top:.8rem;opacity:.95;}
       #arcade-tela .botoes{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
     `;
     document.head.appendChild(estilo);
@@ -364,9 +386,12 @@ const Arcade = {
       titulo.textContent = chefe ? 'CHEFÃO' : `LUTA ${this.indice + 1}`;
       titulo.style.color = chefe ? '#ffd23f' : '#fff';
       const el = ELEMENTS[chaveElemento(prox.id)];
-      sub.textContent = chefe
-        ? `${prox.name} espera no topo. ${el.icone} ${el.nome} — ${el.ultimate.nome} sai forte.`
-        : `Próximo: ${prox.name} · ${el.icone} ${el.nome} (${el.passiva.curto})`;
+      const mensagem = `“${this.MESSAGES[this.indice]}”`;
+      if (chefe) {
+        sub.innerHTML = `<strong>FINAL</strong><br>${mensagem}`;
+      } else {
+        sub.innerHTML = mensagem;
+      }
       seguir.textContent = chefe ? 'ENCARAR O CHEFÃO' : 'PRÓXIMA LUTA';
     }
 

@@ -75,28 +75,8 @@ document.getElementById('btn-start').addEventListener('click', () => {
   modoArcadePedido = false;
   SoundEngine.unlock();
   enterImmersiveMode();
-  goToVideo('produtora', screens.produtora, () => goToVideo('intro', screens.intro, goToSelect));
+  goToVideo('produtora', screens.produtora, () => goToVideo('intro', screens.intro, () => goToSelect('normal')));
 });
-
-// Botão de Arcade criado por código: o index.html não precisa mudar.
-(function criarBotaoArcade() {
-  if (typeof Arcade === 'undefined') return;
-  const btnStart = document.getElementById('btn-start');
-  const btn = document.createElement('button');
-  btn.id = 'btn-arcade';
-  btn.className = 'btn-ghost';
-  btn.type = 'button';
-  btn.style.marginTop = '10px';
-  const rec = Arcade.recorde();
-  btn.innerHTML = 'MODO ARCADE' + (rec ? ` <small style="opacity:.6">· recorde ${rec}/6</small>` : '');
-  btn.addEventListener('click', () => {
-    modoArcadePedido = true;
-    SoundEngine.unlock();
-    enterImmersiveMode();
-    goToVideo('produtora', screens.produtora, () => goToVideo('intro', screens.intro, goToSelect));
-  });
-  btnStart.parentElement.appendChild(btn);
-})();
 
 function goToVideo(key, screenEl, onFinish) {
   showScreen(key === 'produtora' ? 'produtora' : 'intro');
@@ -161,8 +141,38 @@ function restaurarVideo(video) {
   video.load();
 }
 
-function goToSelect() {
+function resetSelection(mode = 'normal') {
+  currentSelectMode = mode;
+  currentSelectRole = 'player';
+  playerChoice = null;
+  rivalChoice = null;
+  selectedCharacter = null;
+  focusIndex = -1;
+  cards.forEach(c => {
+    c.classList.remove('selected', 'disabled');
+    c.removeAttribute('aria-pressed');
+  });
+  selectScreenEl.classList.remove('ready');
+  btnConfirm.disabled = true;
+  if (mode === 'arcade') {
+    selectTitleEl.textContent = 'ESCOLHA SEU LUTADOR';
+    selectedNameEl.innerHTML = 'Escolha seu lutador para o arcade';
+    btnConfirm.textContent = 'CONFIRMAR';
+    btnArcade.style.display = 'none';
+  } else {
+    selectTitleEl.textContent = 'ESCOLHA SEU LUTADOR';
+    selectedNameEl.innerHTML = 'Escolha seu lutador';
+    btnConfirm.textContent = 'CONTINUAR';
+    btnArcade.style.display = '';
+    btnArcade.textContent = 'MODO ARCADE';
+    btnArcade.disabled = false;
+  }
+  preview(null);
+}
+
+function goToSelect(mode = 'normal') {
   showScreen('select');
+  resetSelection(mode);
   BGM.start();
 }
 
@@ -172,7 +182,9 @@ function goToSelect() {
 const characterGrid = document.getElementById('character-grid');
 const selectedNameEl = document.getElementById('selected-name');
 const btnConfirm = document.getElementById('btn-confirm');
+const btnArcade = document.getElementById('btn-arcade');
 const selectScreenEl = document.getElementById('screen-select');
+const selectTitleEl = document.querySelector('.section-title');
 const heroImg = document.getElementById('hero-img');
 const heroName = document.getElementById('hero-name');
 const heroCode = document.getElementById('hero-code');
@@ -180,8 +192,19 @@ const heroBadge = document.getElementById('hero-badge');
 const rosterIndexEl = document.getElementById('roster-index');
 const btnRandom = document.getElementById('btn-random');
 let selectedCharacter = null;
+let playerChoice = null;
+let rivalChoice = null;
+let currentSelectMode = 'normal';
+let currentSelectRole = 'player';
 let focusIndex = -1;
 const cards = [];
+
+if (btnArcade) {
+  btnArcade.addEventListener('click', () => {
+    modoArcadePedido = true;
+    goToSelect('arcade');
+  });
+}
 
 document.getElementById('roster-total').textContent = String(CHARACTERS.length).padStart(2, '0');
 
@@ -280,13 +303,21 @@ function pintarHabilidades(ch) {
 }
 
 function selectCharacter(ch, card) {
+  if (currentSelectRole === 'rival' && playerChoice && ch.id === playerChoice.id) return;
   cards.forEach(c => { c.classList.remove('selected'); c.removeAttribute('aria-pressed'); });
   card.classList.add('selected');
   card.setAttribute('aria-pressed', 'true');
   selectedCharacter = ch;
   focusIndex = CHARACTERS.indexOf(ch);
   preview(ch);
-  selectedNameEl.innerHTML = 'lutador: <b>' + ch.name.toUpperCase() + '</b>';
+  if (currentSelectMode === 'arcade') {
+    selectedNameEl.innerHTML = 'lutador: <b>' + ch.name.toUpperCase() + '</b>';
+  } else if (currentSelectRole === 'player') {
+    selectedNameEl.innerHTML = 'lutador: <b>' + ch.name.toUpperCase() + '</b>';
+  } else {
+    selectTitleEl.textContent = 'ESCOLHA SEU RIVAL';
+    selectedNameEl.innerHTML = 'rival: <b>' + ch.name.toUpperCase() + '</b>';
+  }
   btnConfirm.disabled = false;
   selectScreenEl.classList.add('ready');
   card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
@@ -296,7 +327,36 @@ function selectCharacter(ch, card) {
 function confirmSelection() {
   if (!selectedCharacter) return;
   SFX.confirm();
-  startGame(selectedCharacter);
+
+  if (currentSelectMode === 'arcade') {
+    startGame(selectedCharacter);
+    return;
+  }
+
+  if (currentSelectRole === 'player') {
+    playerChoice = selectedCharacter;
+    selectedCharacter = null;
+    currentSelectRole = 'rival';
+    btnConfirm.disabled = true;
+    selectTitleEl.textContent = 'ESCOLHA SEU RIVAL';
+    selectedNameEl.innerHTML = `rival: <b>ESCOLHA</b>`;
+    cards.forEach(c => {
+      if (c.dataset.id === playerChoice.id) {
+        c.classList.add('disabled');
+        c.classList.remove('selected');
+        c.removeAttribute('aria-pressed');
+      } else {
+        c.classList.remove('selected');
+      }
+    });
+    preview(playerChoice);
+    return;
+  }
+
+  if (currentSelectRole === 'rival') {
+    rivalChoice = selectedCharacter;
+    startGame(playerChoice, rivalChoice);
+  }
 }
 
 btnConfirm.addEventListener('click', confirmSelection);
@@ -560,7 +620,7 @@ function pickRival(excludeId) {
 
 function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
 
-function startGame(chosen) {
+function startGame(chosen, rivalOverride = null) {
   player = chosen;
 
   // no arcade o adversário é o degrau da escada, não sorteio
@@ -569,7 +629,7 @@ function startGame(chosen) {
   } else if (typeof Arcade !== 'undefined' && Arcade.ativo) {
     rival = Arcade.rivalAtual() || pickRival(chosen.id);
   } else {
-    rival = pickRival(chosen.id);
+    rival = rivalOverride || pickRival(chosen.id);
   }
   playerHP = MAX_HP;
   rivalHP = MAX_HP;
@@ -620,13 +680,21 @@ function startGame(chosen) {
     roundResult.textContent = `${rival.name} é o CHEFÃO. Cuidado com a ultimate.`;
   }
 
+  if (typeof Arcade !== 'undefined' && modoArcadePedido && Arcade.ativo && Arcade._preFightIntro) {
+    Arcade._preFightIntro = false;
+    Arcade.mostrarTela('proxima');
+    return;
+  }
+
   showScreen('game');
-  BGM.start();
+  const chaveArena = (typeof StageFX !== 'undefined')
+    ? (StageFX.POR_PERSONAGEM[rival.id] || rEl)
+    : rEl;
+  BGM.start(chaveArena);
 
   // A arena entra DEPOIS de showScreen: enquanto a tela está em display:none,
   // o navegador recusa o play() e a arena era desligada em silêncio.
   if (typeof StageFX !== 'undefined') {
-    const chaveArena = StageFX.POR_PERSONAGEM[rival.id] || rEl;
     requestAnimationFrame(() => StageFX.mostrar(chaveArena));
   }
 }
@@ -973,7 +1041,20 @@ function endGame(result) {
 
   if (result === 'win') {
     launchConfetti();
-    playClip(victoryVideoEl, null, fonteDoClipe('vt:' + player.id, urlVitoria(player.id)), 8000, () => {});
+    const shouldShowVictoryClip = !(typeof Arcade !== 'undefined' && Arcade.ativo && !Arcade.ehUltima());
+    const isArcadeFinalWin = shouldShowVictoryClip && typeof Arcade !== 'undefined' && Arcade.ativo && Arcade.ehUltima();
+    if (shouldShowVictoryClip) {
+      if (isArcadeFinalWin) {
+        overlayTitle.textContent = 'VOCÊ SOBREVIVEU.';
+        overlayTitle.style.color = '#ffd23f';
+        overlaySubtitle.textContent = 'MAS NEM TODOS TIVERAM A MESMA SORTE.';
+        setTimeout(() => {
+          playClip(victoryVideoEl, null, fonteDoClipe('vt:' + player.id, urlVitoria(player.id)), 8000, () => {});
+        }, 1400);
+      } else {
+        playClip(victoryVideoEl, null, fonteDoClipe('vt:' + player.id, urlVitoria(player.id)), 8000, () => {});
+      }
+    }
   }
 
   // ---------- arcade: a escada decide o que vem depois ----------

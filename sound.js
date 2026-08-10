@@ -103,23 +103,42 @@ const SoundEngine = (() => {
 
   // -------------------- música de fundo (arquivo real, em loop) --------------------
   const BGM = (() => {
+    const TRACKS = {
+      coracao: './assets/audio/musica coracao.mp3',
+      chama: './assets/audio/musica chama.mp3',
+      trovao: './assets/audio/musica trovao.mp3',
+      gelo: './assets/audio/musica gelo.mp3',
+      toxina: './assets/audio/musica toxina.mp3',
+      sombra: './assets/audio/musica sombra.mp3',
+      default: './assets/audio/arena.mp3',
+    };
+
     let playing = false;
     let audioEl = null;
+    let atual = null;
 
-    function ensureAudio() {
-      if (!audioEl) {
-        audioEl = new Audio('./assets/audio/arena.mp3');
+    function ensureAudio(track) {
+      const chave = track || 'default';
+      const src = TRACKS[chave] || TRACKS.default;
+      if (!audioEl || atual !== src) {
+        if (audioEl) {
+          audioEl.pause();
+          audioEl.currentTime = 0;
+        }
+        audioEl = new Audio(src);
         audioEl.loop = true;
         audioEl.volume = 0.45;
         audioEl.preload = 'auto';
+        atual = src;
       }
       return audioEl;
     }
 
     return {
-      start() {
-        if (playing) return;
-        const a = ensureAudio();
+      start(track) {
+        const chave = track || 'default';
+        const a = ensureAudio(chave);
+        if (playing && atual === a.src) return;
         const p = a.play();
         if (p && p.catch) p.catch(() => { /* navegador bloqueou autoplay, tenta de novo no próximo gesto */ });
         playing = true;
