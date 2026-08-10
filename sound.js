@@ -119,7 +119,7 @@ const SoundEngine = (() => {
 
     function ensureAudio(track) {
       const chave = track || 'default';
-      const src = TRACKS[chave] || TRACKS.default;
+      const src = TRACKS[chave] || `./assets/audio/musica ${chave}.mp3` || TRACKS.default;
       if (!audioEl || atual !== src) {
         if (audioEl) {
           audioEl.pause();

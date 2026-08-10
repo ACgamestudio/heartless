@@ -37,14 +37,6 @@ const StageFX = {
   _timerTravou: null,
   desligada: false,   // desliga sozinho em aparelho que não dá conta
   _preFightIntro: false,
-  MESSAGES: [
-    'A arena abriu suas portas. Só um sairá vencedor.',
-    'A primeira vitória não significa nada.',
-    'O medo começa quando não há mais volta.',
-    'Você está mais perto do fim… e mais longe de sobreviver.',
-    'O próximo combate decidirá quem merece chegar ao último.',
-    'Chegou ao fim. Agora não lute para vencer. Lute para provar que você merece estar aqui.',
-  ],
 
   init() {
     const tela = document.getElementById('screen-game');
@@ -224,6 +216,17 @@ const Arcade = {
   indice: 0,
   dificuldade: 0,          // 0 a 1 — lido pelo script.js
   chefeAgora: false,
+
+  // Frase exibida na tela da escada antes de cada luta (MESSAGES[this.indice]).
+  // A de índice 5 (a última) é a fala de entrada do chefão — ver mostrarTela().
+  MESSAGES: [
+    'A arena abriu suas portas. Só um sairá vencedor.',
+    'A primeira vitória não significa nada.',
+    'O medo começa quando não há mais volta.',
+    'Você está mais perto do fim… e mais longe de sobreviver.',
+    'O próximo combate decidirá quem merece chegar ao último.',
+    'Chegou ao fim. Agora não lute para vencer. Lute para provar que você merece estar aqui.',
+  ],
 
   recorde() { return parseInt(localStorage.getItem('hl-arcade-recorde') || '0', 10); },
   salvarRecorde(n) {
