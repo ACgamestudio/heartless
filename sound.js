@@ -128,6 +128,19 @@ const SoundEngine = (() => {
   };
 
   // -------------------- música de fundo (arquivo real, em loop) --------------------
+  //
+  // Antes: quando o navegador bloqueava o autoplay (.play() rejeitado), o
+  // código marcava "playing = true" mesmo assim e nunca mais tentava de novo
+  // — a música simplesmente nunca começava. Diferente do vídeo de arena
+  // (StageFX, em arcade.js), que tenta tocar em várias tentativas seguidas,
+  // aqui não existia rede de segurança nenhuma.
+  //
+  // Agora: guardamos a CHAVE pedida (não a URL resolvida — comparar com
+  // `audioEl.src` nunca batia, porque o navegador devolve o caminho absoluto,
+  // não o relativo que a gente monta) e, se o play() falhar, registramos um
+  // listener de UMA VEZ SÓ no próximo toque/clique/tecla pra tentar de novo.
+  // Isso resolve o caso comum de o navegador liberar vídeo (que já rodou com
+  // som na intro) mas ainda não ter "certeza" de que pode tocar este <audio>.
   const BGM = (() => {
     const TRACKS = {
       coracao: './assets/audio/musica coracao.mp3',
@@ -139,44 +152,73 @@ const SoundEngine = (() => {
       default: './assets/audio/arena.mp3',
     };
 
-    let playing = false;
     let audioEl = null;
-    let atual = null;
+    let chaveAtual = null;      // chave lógica ('chama', 'gelo'...), não a URL
+    let pendente = null;        // chave que ficou tentando tocar e foi bloqueada
+    let retryArmado = false;
 
-    function ensureAudio(track) {
-      const chave = track || 'default';
-      const src = TRACKS[chave] || `./assets/audio/musica ${chave}.mp3` || TRACKS.default;
-      if (!audioEl || atual !== src) {
+    function srcDaChave(chave) {
+      return TRACKS[chave] || `./assets/audio/musica ${chave}.mp3` || TRACKS.default;
+    }
+
+    function ensureAudio(chave) {
+      if (!audioEl || chaveAtual !== chave) {
         if (audioEl) {
           audioEl.pause();
           audioEl.currentTime = 0;
         }
-        audioEl = new Audio(src);
+        audioEl = new Audio(srcDaChave(chave));
         audioEl.loop = true;
         audioEl.volume = 0.45;
         audioEl.preload = 'auto';
-        atual = src;
+        chaveAtual = chave;
       }
       return audioEl;
     }
 
+    function tentarTocar(chave) {
+      const a = ensureAudio(chave);
+      // já tocando de fato esta faixa: nada a fazer (evita reiniciar à toa)
+      if (chaveAtual === chave && !a.paused) return;
+      const p = a.play();
+      if (p && p.catch) {
+        p.catch(() => {
+          // autoplay bloqueado: guarda o pedido e arma UM retry no próximo
+          // gesto do usuário em qualquer lugar da página.
+          pendente = chave;
+          armarRetryNoProximoGesto();
+        });
+      }
+    }
+
+    function armarRetryNoProximoGesto() {
+      if (retryArmado) return;
+      retryArmado = true;
+      const eventos = ['pointerdown', 'keydown', 'touchstart'];
+      const handler = () => {
+        retryArmado = false;
+        eventos.forEach(ev => document.removeEventListener(ev, handler));
+        if (pendente) {
+          const chave = pendente;
+          pendente = null;
+          tentarTocar(chave);
+        }
+      };
+      eventos.forEach(ev => document.addEventListener(ev, handler, { once: true, passive: true }));
+    }
+
     return {
       start(track) {
-        const chave = track || 'default';
-        const a = ensureAudio(chave);
-        if (playing && atual === a.src) return;
-        const p = a.play();
-        if (p && p.catch) p.catch(() => { /* navegador bloqueou autoplay, tenta de novo no próximo gesto */ });
-        playing = true;
+        tentarTocar(track || 'default');
       },
       stop() {
-        playing = false;
+        pendente = null;
         if (audioEl) {
           audioEl.pause();
           audioEl.currentTime = 0;
         }
       },
-      get isPlaying() { return playing; },
+      get isPlaying() { return !!(audioEl && !audioEl.paused); },
     };
   })();
 

@@ -973,10 +973,24 @@ function resolveAndApply(playerMove, rivalMove) {
   flashClash(pDmg, cDmg);
   updateCombo(pDmg, cDmg);
 
-  // hurt() é de quem apanhou, taunt() é de quem acertou — cada função já
-  // sorteia sozinha se a voz sai grave ou aguda (nunca as duas juntas).
-  if (pDmg > 0) { showDamage(playerDmgEl, pDmg); hit(playerPortrait); SFX.hit(); SFX.hurt(); SFX.taunt(); }
-  if (cDmg > 0) { showDamage(rivalDmgEl, cDmg); hit(rivalPortrait); SFX.hit(); SFX.hurt(); SFX.taunt(); }
+  // hurt() é de quem apanhou, taunt() é de quem acertou.
+  //
+  // Antes: quando os dois tomavam dano no mesmo turno (choque de golpes
+  // iguais), o código tocava hurt()+taunt() PRA CADA lado — 4 sons de voz
+  // sobrepostos em menos de 100ms. Isso não soa como "gemido" nem "riso",
+  // soa como ruído: as ondas se somam e o efeito se perde por completo, o
+  // que na prática parecia que o som "não estava acontecendo".
+  //
+  // Agora: cada golpe efetivo mostra dano e o "hit" visual normalmente, mas
+  // a voz só entra uma vez por lado — e o taunt (confiança de quem acertou)
+  // só toca quando SÓ um dos dois foi atingido. Num choque mútuo, os dois
+  // gemem (os dois apanharam), ninguém provoca (ninguém venceu a troca).
+  const soJogadorApanhou = pDmg > 0 && cDmg === 0;   // rival acertou sozinho
+  const soRivalApanhou = cDmg > 0 && pDmg === 0;     // jogador acertou sozinho
+  if (pDmg > 0) { showDamage(playerDmgEl, pDmg); hit(playerPortrait); SFX.hit(); SFX.hurt(); }
+  if (cDmg > 0) { showDamage(rivalDmgEl, cDmg); hit(rivalPortrait); SFX.hit(); SFX.hurt(); }
+  if (soRivalApanhou) SFX.taunt();   // só o jogador acertou -> jogador provoca
+  if (soJogadorApanhou) SFX.taunt(); // só o rival acertou -> rival provoca (mesma função, voz sorteada)
   if (playerMove === 'block' && pDmg === 0) guard(playerPortrait);
   if (rivalMove === 'block' && cDmg === 0) guard(rivalPortrait);
   if (pDmg > 0 || cDmg > 0) shakeScreen();
