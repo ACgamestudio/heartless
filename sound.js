@@ -58,6 +58,14 @@ const SoundEngine = (() => {
     src.start(t0);
   }
 
+  // Sorteia grave ("masculina") ou aguda ("feminina") pra reação de voz.
+  // Sempre uma OU outra — hurt()/taunt() chamam isso uma vez só e usam o
+  // resultado pra montar o som inteiro, nunca as duas juntas.
+  function randomVoice() {
+    const isMale = Math.random() < 0.5;
+    return { isMale, base: isMale ? 105 + Math.random() * 45 : 200 + Math.random() * 90 };
+  }
+
   // -------------------- efeitos das jogadas --------------------
   const SFX = {
     punch() {
@@ -79,6 +87,24 @@ const SoundEngine = (() => {
     hit() {
       noiseBurst({ dur: 0.1, gain: 0.2, filterFreq: 500 });
       tone({ freq: 120, dur: 0.12, type: 'triangle', gain: 0.18 });
+    },
+    // Reação de dor de quem apanhou: pitch cai (gemido). Grave ou aguda por sorteio.
+    hurt() {
+      const v = randomVoice();
+      const dur = v.isMale ? 0.22 : 0.18;
+      tone({ freq: v.base, freqEnd: v.base * 0.6, dur, type: v.isMale ? 'sawtooth' : 'triangle', gain: 0.22 });
+      noiseBurst({ dur: dur * 0.5, gain: 0.13, filterFreq: v.isMale ? 500 : 850 });
+    },
+    // Reação de quem acertou: pitch sobe (confiante). Nasce ~80ms depois do
+    // impacto pra não virar uma bolha só de som junto com hit()/hurt().
+    taunt() {
+      const v = randomVoice();
+      const base = v.base * (v.isMale ? 1.05 : 1.02);
+      const atraso = 0.08;
+      tone({ freq: base, freqEnd: base * 1.3, dur: v.isMale ? 0.13 : 0.11,
+             type: v.isMale ? 'triangle' : 'sine', gain: 0.18, delay: atraso });
+      tone({ freq: base * 1.25, dur: 0.08, type: v.isMale ? 'triangle' : 'sine',
+             gain: 0.11, delay: atraso + (v.isMale ? 0.1 : 0.08) });
     },
     select() {
       tone({ freq: 660, dur: 0.07, type: 'sine', gain: 0.18 });

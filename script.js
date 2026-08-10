@@ -973,8 +973,10 @@ function resolveAndApply(playerMove, rivalMove) {
   flashClash(pDmg, cDmg);
   updateCombo(pDmg, cDmg);
 
-  if (pDmg > 0) { showDamage(playerDmgEl, pDmg); hit(playerPortrait); SFX.hit(); }
-  if (cDmg > 0) { showDamage(rivalDmgEl, cDmg); hit(rivalPortrait); SFX.hit(); }
+  // hurt() é de quem apanhou, taunt() é de quem acertou — cada função já
+  // sorteia sozinha se a voz sai grave ou aguda (nunca as duas juntas).
+  if (pDmg > 0) { showDamage(playerDmgEl, pDmg); hit(playerPortrait); SFX.hit(); SFX.hurt(); SFX.taunt(); }
+  if (cDmg > 0) { showDamage(rivalDmgEl, cDmg); hit(rivalPortrait); SFX.hit(); SFX.hurt(); SFX.taunt(); }
   if (playerMove === 'block' && pDmg === 0) guard(playerPortrait);
   if (rivalMove === 'block' && cDmg === 0) guard(rivalPortrait);
   if (pDmg > 0 || cDmg > 0) shakeScreen();
