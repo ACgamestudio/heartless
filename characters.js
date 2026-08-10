@@ -24,7 +24,7 @@ const CHARACTERS = [
 
 // Personagens com vídeo de especial próprio em assets/videos/specials/.
 // Os demais usam o especial padrão (sem cinemática).
-const CINEMATIC = ['heart', 'teddy', 'lolly', 'toxin', 'blitz'];
+const CINEMATIC = ['heart', 'teddy', 'lolly', 'toxin', 'blitz', 'shadow', 'yuki', 'star', 'kai', 'spark', 'void', 'king', 'miyu', 'zuko', 'razor', 'nya',];
 const hasCinematic = (id) => CINEMATIC.indexOf(id) >= 0;
 
 const charImg = (id) => `./assets/img/characters/${id}.png`;
