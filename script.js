@@ -31,6 +31,7 @@ const screens = {
   start: document.getElementById('screen-start'),
   produtora: document.getElementById('screen-produtora'),
   intro: document.getElementById('screen-intro'),
+  menu: document.getElementById('screen-menu'),
   select: document.getElementById('screen-select'),
   game: document.getElementById('screen-game'),
 };
@@ -75,7 +76,24 @@ document.getElementById('btn-start').addEventListener('click', () => {
   modoArcadePedido = false;
   SoundEngine.unlock();
   enterImmersiveMode();
-  goToVideo('produtora', screens.produtora, () => goToVideo('intro', screens.intro, () => goToSelect('normal')));
+  goToVideo('produtora', screens.produtora, () => goToVideo('intro', screens.intro, () => showScreen('menu')));
+});
+
+// --------------------------------------------------------------------------
+// TELA 3.5 -> MENU: escolha de modo (Normal ou Arcade), logo antes da
+// seleção de personagem. Antes esse botão ficava dentro da própria tela de
+// seleção; agora é uma tela própria que sempre aparece primeiro.
+// --------------------------------------------------------------------------
+document.getElementById('btn-menu-normal').addEventListener('click', () => {
+  SFX.confirm();
+  modoArcadePedido = false;
+  goToSelect('normal');
+});
+
+document.getElementById('btn-menu-arcade').addEventListener('click', () => {
+  SFX.confirm();
+  modoArcadePedido = true;
+  goToSelect('arcade');
 });
 
 function goToVideo(key, screenEl, onFinish) {
@@ -158,14 +176,10 @@ function resetSelection(mode = 'normal') {
     selectTitleEl.textContent = 'ESCOLHA SEU LUTADOR';
     selectedNameEl.innerHTML = 'Escolha seu lutador para o arcade';
     btnConfirm.textContent = 'CONFIRMAR';
-    btnArcade.style.display = 'none';
   } else {
     selectTitleEl.textContent = 'ESCOLHA SEU LUTADOR';
     selectedNameEl.innerHTML = 'Escolha seu lutador';
     btnConfirm.textContent = 'CONTINUAR';
-    btnArcade.style.display = '';
-    btnArcade.textContent = 'MODO ARCADE';
-    btnArcade.disabled = false;
   }
   preview(null);
 }
@@ -182,7 +196,6 @@ function goToSelect(mode = 'normal') {
 const characterGrid = document.getElementById('character-grid');
 const selectedNameEl = document.getElementById('selected-name');
 const btnConfirm = document.getElementById('btn-confirm');
-const btnArcade = document.getElementById('btn-arcade');
 const selectScreenEl = document.getElementById('screen-select');
 const selectTitleEl = document.querySelector('.section-title');
 const heroImg = document.getElementById('hero-img');
@@ -199,12 +212,6 @@ let currentSelectRole = 'player';
 let focusIndex = -1;
 const cards = [];
 
-if (btnArcade) {
-  btnArcade.addEventListener('click', () => {
-    modoArcadePedido = true;
-    goToSelect('arcade');
-  });
-}
 
 document.getElementById('roster-total').textContent = String(CHARACTERS.length).padStart(2, '0');
 
@@ -1144,7 +1151,7 @@ btnMenu.addEventListener('click', () => {
     // campeão ou derrota: zera a corrida e volta pra seleção
     Arcade.encerrar();
     modoArcadePedido = true;             // segue no arcade se escolher outro lutador
-    const btn = document.getElementById('btn-arcade');
+    const btn = document.getElementById('btn-menu-arcade');
     if (btn) {
       const rec = Arcade.recorde();
       btn.innerHTML = 'MODO ARCADE' + (rec ? ` <small style="opacity:.6">· recorde ${rec}/6</small>` : '');

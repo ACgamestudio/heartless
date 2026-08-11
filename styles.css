@@ -741,20 +741,38 @@ button { font-family: var(--font-body); }
   border-top: 1px solid rgba(255,255,255,.09);
 }
 
-.arcade-row {
+/* ===================== TELA 3.5: MENU (escolha de modo) ===================== */
+#screen-menu { overflow: hidden; }
+
+.menu-content {
   position: relative;
   z-index: 2;
+  text-align: center;
+  margin: auto;
   display: flex;
-  justify-content: flex-end;
-  width: min(100%, 1280px);
-  padding: 1rem 0 2.2rem;
+  flex-direction: column;
+  align-items: center;
 }
 
-.arcade-row #btn-arcade {
-  min-width: 12rem;
-  border-radius: 0;
-  clip-path: polygon(12px 0, 100% 0, calc(100% - 12px) 100%, 0 100%);
-  padding: .8rem 1.6rem;
+.menu-logo {
+  font-size: clamp(1.7rem, calc(var(--vw) * 4.4), 3.1rem);
+}
+
+.menu-subtitle {
+  letter-spacing: 8px;
+}
+
+.menu-buttons {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.1rem;
+  margin-top: 1rem;
+}
+
+.menu-buttons .btn-glow,
+.menu-buttons .btn-ghost {
+  min-width: 15rem;
 }
 
 .select-info {
