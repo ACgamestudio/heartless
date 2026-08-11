@@ -430,6 +430,7 @@ const overlayEnd = document.getElementById('overlay-end');
 const overlayTitle = document.getElementById('overlay-title');
 const overlaySubtitle = document.getElementById('overlay-subtitle');
 const btnRestart = document.getElementById('btn-restart');
+const victoryOverlay = document.getElementById('victory-overlay');
 const victoryVideoEl = document.getElementById('victory-video');
 
 const specialOverlay = document.getElementById('special-overlay');
@@ -670,7 +671,7 @@ function startGame(chosen, rivalOverride = null) {
       ? `${ELEMENTS[pEl].nome} é fraco contra ${ELEMENTS[rEl].nome}. Jogue na defensiva.`
       : 'Faça sua jogada!';
   overlayEnd.classList.add('hidden');
-  victoryVideoEl.style.display = 'none';
+  victoryOverlay.classList.add('hidden');
   victoryVideoEl.removeAttribute('src');
 
   // chefão do arcade entra com metade do medidor já carregado
@@ -1055,23 +1056,15 @@ function endGame(result) {
   overlayEnd.classList.remove('hidden');
   result === 'win' ? SFX.victory() : SFX.defeat();
 
-  if (result === 'win') {
-    launchConfetti();
-    const shouldShowVictoryClip = !(typeof Arcade !== 'undefined' && Arcade.ativo && !Arcade.ehUltima());
-    const isArcadeFinalWin = shouldShowVictoryClip && typeof Arcade !== 'undefined' && Arcade.ativo && Arcade.ehUltima();
-    if (shouldShowVictoryClip) {
-      if (isArcadeFinalWin) {
-        overlayTitle.textContent = 'VOCÊ SOBREVIVEU.';
-        overlayTitle.style.color = '#ffd23f';
-        overlaySubtitle.textContent = 'MAS NEM TODOS TIVERAM A MESMA SORTE.';
-        setTimeout(() => {
-          playClip(victoryVideoEl, null, fonteDoClipe('vt:' + player.id, urlVitoria(player.id)), 8000, () => {});
-        }, 1400);
-      } else {
-        playClip(victoryVideoEl, null, fonteDoClipe('vt:' + player.id, urlVitoria(player.id)), 8000, () => {});
-      }
-    }
-  }
+  // O final do personagem (vídeo em assets/videos/victory/) é uma recompensa
+  // de terminar o arcade — só pode passar depois de vencer a 6ª luta (o
+  // chefão), nunca numa partida avulsa nem nos degraus 1-5. E quando passa,
+  // é em tela cheia de verdade (#victory-overlay), com som, sem dividir
+  // espaço com o card de "VITÓRIA!"/botão.
+  const isArcadeFinalWin = result === 'win' &&
+    typeof Arcade !== 'undefined' && Arcade.ativo && Arcade.ehUltima();
+
+  if (result === 'win') launchConfetti();
 
   // ---------- arcade: a escada decide o que vem depois ----------
   if (typeof Arcade !== 'undefined' && Arcade.ativo) {
@@ -1081,11 +1074,30 @@ function endGame(result) {
       const eraChefao = Arcade.ehUltima();
       Arcade.salvarRecorde(Arcade.indice + 1);
       const temMais = Arcade.avancar();
-      // dá tempo do confete e do clipe de vitória aparecerem antes da escada
-      setTimeout(() => {
-        overlayEnd.classList.add('hidden');
-        Arcade.mostrarTela(eraChefao || !temMais ? 'campeao' : 'proxima');
-      }, eraChefao ? 3200 : 2200);
+
+      if (isArcadeFinalWin) {
+        overlayTitle.textContent = 'VOCÊ SOBREVIVEU.';
+        overlayTitle.style.color = '#ffd23f';
+        overlaySubtitle.textContent = 'MAS NEM TODOS TIVERAM A MESMA SORTE.';
+        // um respiro pro confete e pro texto antes de cortar pro final —
+        // só então esconde o card pequeno e abre o vídeo em tela cheia.
+        setTimeout(() => {
+          overlayEnd.classList.add('hidden');
+          BGM.stop(); // o final tem áudio próprio; a trilha da arena não briga com ele
+          playClip(
+            victoryVideoEl, victoryOverlay,
+            fonteDoClipe('vt:' + player.id, urlVitoria(player.id)),
+            8000,
+            () => Arcade.mostrarTela('campeao') // só avança quando o clipe de fato termina
+          );
+        }, 1400);
+      } else {
+        // luta comum do arcade (degraus 1-5): sem vídeo, segue o fluxo normal
+        setTimeout(() => {
+          overlayEnd.classList.add('hidden');
+          Arcade.mostrarTela(temMais ? 'proxima' : 'campeao');
+        }, 2200);
+      }
     } else {
       Arcade.salvarRecorde(Arcade.indice);
       setTimeout(() => {

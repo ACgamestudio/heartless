@@ -226,13 +226,19 @@
 <div id="overlay-end" class="overlay hidden">
   <canvas id="confetti-canvas"></canvas>
   <div class="overlay-content">
-    <video id="victory-video" playsinline></video>
     <h2 id="overlay-title">VITÓRIA</h2>
     <p id="overlay-subtitle"></p>
     <div class="overlay-buttons">
       <button id="btn-restart" class="btn-glow">JOGAR NOVAMENTE</button>
     </div>
   </div>
+</div>
+
+<!-- ===================== OVERLAY: FINAL DO PERSONAGEM (só após vencer o chefão do arcade) ===================== -->
+<!-- Tela cheia de verdade, com som, igual ao overlay do especial. Só é aberto
+     pelo endGame() quando o jogador vence a 6ª luta (o chefão) no arcade. -->
+<div id="victory-overlay" class="video-overlay hidden">
+  <video id="victory-video" playsinline></video>
 </div>
 
 <script src="./sound.js"></script>
