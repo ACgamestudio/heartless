@@ -89,18 +89,28 @@ const SoundEngine = (() => {
       tone({ freq: 120, dur: 0.12, type: 'triangle', gain: 0.18 });
     },
     // Reação de dor de quem apanhou: pitch cai (gemido). Grave ou aguda por sorteio.
+    //
+    // hit() e hurt() são chamados no MESMO instante (resolveAndApply chama os
+    // dois seguidos, sem esperar nada entre eles). Sem atraso, os dois
+    // começavam exatamente em t=0 com frequências parecidas (~120-200Hz) e
+    // se fundiam num "thud" só — a queda de tom que faz o som soar como
+    // gemido ficava mascarada pelo impacto seco do hit(). Um atraso curto
+    // (70ms) deixa o impacto tocar sozinho primeiro e o gemido nascer logo
+    // depois, já audível por cima da cauda do impacto — não junto com ele.
     hurt() {
       const v = randomVoice();
       const dur = v.isMale ? 0.22 : 0.18;
-      tone({ freq: v.base, freqEnd: v.base * 0.6, dur, type: v.isMale ? 'sawtooth' : 'triangle', gain: 0.22 });
-      noiseBurst({ dur: dur * 0.5, gain: 0.13, filterFreq: v.isMale ? 500 : 850 });
+      const atraso = 0.07;
+      tone({ freq: v.base, freqEnd: v.base * 0.6, dur, type: v.isMale ? 'sawtooth' : 'triangle', gain: 0.22, delay: atraso });
+      noiseBurst({ dur: dur * 0.5, gain: 0.13, filterFreq: v.isMale ? 500 : 850, delay: atraso });
     },
-    // Reação de quem acertou: pitch sobe (confiante). Nasce ~80ms depois do
-    // impacto pra não virar uma bolha só de som junto com hit()/hurt().
+    // Reação de quem acertou: pitch sobe (confiante). Nasce depois do gemido
+    // do outro lutador (que termina por volta de ~250-290ms) — antes disso
+    // as duas "vozes" tocavam quase juntas e nenhuma das duas se distinguia.
     taunt() {
       const v = randomVoice();
       const base = v.base * (v.isMale ? 1.05 : 1.02);
-      const atraso = 0.08;
+      const atraso = 0.3;
       tone({ freq: base, freqEnd: base * 1.3, dur: v.isMale ? 0.13 : 0.11,
              type: v.isMale ? 'triangle' : 'sine', gain: 0.18, delay: atraso });
       tone({ freq: base * 1.25, dur: 0.08, type: v.isMale ? 'triangle' : 'sine',
