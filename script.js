@@ -899,7 +899,12 @@ function playTurn(playerMove) {
   if (specialUserId) {
     const fonte = fonteDoClipe('sp:' + specialUserId, urlEspecial(specialUserId));
     if (typeof StageFX !== 'undefined') StageFX.pausar();
-    playClip(specialVideoEl, specialOverlay, fonte, 2500, () => {
+    // 2500ms era pouco: numa conexão lenta, o navegador podia ainda não ter
+    // baixado o suficiente pra disparar 'oncanplay' dentro desse tempo — o
+    // jogo desistia e pulava o especial mesmo o arquivo estando certinho,
+    // só lento. Um arquivo REALMENTE ausente ainda falha rápido (onerror ou
+    // a rejeição do play() disparam antes disso, independente deste número).
+    playClip(specialVideoEl, specialOverlay, fonte, 5000, () => {
       if (typeof StageFX !== 'undefined') StageFX.retomar();
       resolveAndApply(playerMove, rivalMove);
     });
